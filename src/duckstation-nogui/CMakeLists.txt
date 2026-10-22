@@ -15,7 +15,7 @@ if(NINTENDO_SWITCH)
   target_sources(duckstation-nogui PRIVATE
     switch_nogui_platform.cpp
     switch_nogui_platform.h
-    switch_asm.S
+    switch_asm.s
   )
   target_link_libraries(duckstation-nogui PUBLIC "${NX_LIBRARIES}")
 

@@ -270,19 +270,26 @@ elseif(NINTENDO_SWITCH)
 
     switch_audio_stream.cpp
     switch_audio_stream.h
-
-    deko3d_device.cpp
-    deko3d_stream_buffer.cpp
-    deko3d_texture.cpp
-    deko3d_memory_heap.cpp
-    deko3d_pipeline.cpp
-    deko3d_swap_chain.cpp
   )
 
-  if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_link_libraries(util PRIVATE deko3dd nxd)
-  else()
-    target_link_libraries(util PRIVATE deko3d nx)
+  target_link_libraries(util PRIVATE nx)
+
+  if(ENABLE_DEKO3D)
+    target_sources(util PRIVATE
+      deko3d_device.cpp
+      deko3d_stream_buffer.cpp
+      deko3d_texture.cpp
+      deko3d_memory_heap.cpp
+      deko3d_pipeline.cpp
+      deko3d_swap_chain.cpp
+    )
+
+    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+      target_link_libraries(util PRIVATE deko3dd nxd)
+    else()
+      target_link_libraries(util PRIVATE deko3d nx)
+    endif()
+    target_compile_definitions(util PUBLIC "ENABLE_DEKO3D=1")
   endif()
 endif()
 

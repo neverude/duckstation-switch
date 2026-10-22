@@ -108,7 +108,7 @@ endif()
 
 if (NINTENDO_SWITCH)
   # switch curl depends on libnx, so we have to link it here...
-  target_link_libraries(common PRIVATE uam "${NX_LIBRARIES}")
+  target_link_libraries(common PRIVATE "${NX_LIBRARIES}")
 endif()
 
 if(ANDROID)

@@ -36,7 +36,7 @@ Log_SetChannel(GPUDevice);
 #include "vulkan_device.h"
 #endif
 
-#ifdef __SWITCH__
+#ifdef ENABLE_DEKO3D
 #include "deko3d_device.h"
 #endif
 
@@ -1113,7 +1113,7 @@ std::unique_ptr<GPUDevice> GPUDevice::CreateDeviceForAPI(RenderAPI api)
       return WrapNewMetalDevice();
 #endif
 
-#ifdef __SWITCH__
+#ifdef ENABLE_DEKO3D
     case RenderAPI::Deko3D:
       return std::make_unique<Deko3DDevice>();
 #endif
