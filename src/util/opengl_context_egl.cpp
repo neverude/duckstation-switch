@@ -15,7 +15,9 @@
 
 Log_SetChannel(OpenGLContext);
 
+#ifndef __SWITCH__
 static DynamicLibrary s_egl_library;
+#endif
 static std::atomic_uint32_t s_egl_refcount = 0;
 
 static bool LoadEGL()
@@ -24,6 +26,7 @@ static bool LoadEGL()
   // So, not wrapping this in a mutex should be fine.
   if (s_egl_refcount.fetch_add(1, std::memory_order_acq_rel) == 0)
   {
+#ifndef __SWITCH__
     DebugAssert(!s_egl_library.IsOpen());
 
     std::string egl_libname = DynamicLibrary::GetVersionedFilename("libEGL");
@@ -38,9 +41,14 @@ static bool LoadEGL()
       if (!s_egl_library.Open(egl_libname.c_str(), &error))
         Log_ErrorFmt("Failed to load EGL: {}", error.GetDescription());
     }
+#endif
   }
 
+#ifdef __SWITCH__
+  return true;
+#else
   return s_egl_library.IsOpen();
+#endif
 }
 
 static void UnloadEGL()
@@ -49,14 +57,25 @@ static void UnloadEGL()
   if (s_egl_refcount.fetch_sub(1, std::memory_order_acq_rel) == 1)
   {
     Log_InfoPrint("Unloading EGL.");
+#ifndef __SWITCH__
     s_egl_library.Close();
+#endif
   }
+}
+
+static GLADapiproc GetEGLProcAddress(const char* name)
+{
+#ifdef __SWITCH__
+  // libEGL is statically linked on Switch, there is no dynamic library to query.
+  return reinterpret_cast<GLADapiproc>(eglGetProcAddress(name));
+#else
+  return reinterpret_cast<GLADapiproc>(s_egl_library.GetSymbolAddress(name));
+#endif
 }
 
 static bool LoadGLADEGL(EGLDisplay display, Error* error)
 {
-  const int version =
-    gladLoadEGL(display, [](const char* name) { return (GLADapiproc)s_egl_library.GetSymbolAddress(name); });
+  const int version = gladLoadEGL(display, GetEGLProcAddress);
   if (version == 0)
   {
     Error::SetStringView(error, "Loading GLAD EGL functions failed");

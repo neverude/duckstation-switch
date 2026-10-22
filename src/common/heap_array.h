@@ -115,6 +115,10 @@ private:
       m_data = static_cast<T*>(_aligned_malloc(SIZE * sizeof(T), ALIGNMENT));
       if (!m_data)
         Panic("Memory allocation failed.");
+#elif defined(__SWITCH__)
+      m_data = static_cast<T*>(aligned_alloc(ALIGNMENT, SIZE * sizeof(T)));
+      if (!m_data)
+        Panic("Memory allocation failed.");
 #else
       if (posix_memalign(reinterpret_cast<void**>(&m_data), ALIGNMENT, SIZE * sizeof(T)) != 0)
         Panic("Memory allocation failed.");
@@ -356,10 +360,11 @@ private:
 #ifdef __SWITCH__
       m_data = reinterpret_cast<T*>(aligned_alloc(alignment, size * sizeof(T)));
       if (!m_data)
+        Panic("Memory allocation failed.");
 #else
       if (posix_memalign(reinterpret_cast<void**>(&m_data), alignment, size * sizeof(T)) != 0)
-#endif
         Panic("Memory allocation failed.");
+#endif
 
       if (prev_ptr)
       {

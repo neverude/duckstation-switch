@@ -1,7 +1,7 @@
 #!/bin/bash
 # Builds duckstation.nro for the Nintendo Switch.
-# Requires devkitPro with switch-dev and the switch portlibs (zstd, webp, zlib,
-# png, jpeg, freetype, harfbuzz, curl), plus CMake and Ninja on PATH.
+# Requires devkitPro with switch-dev and the switch portlibs (zstd, webp, zlib, mesa,
+# png, jpeg, freetype, harfbuzz, curl, libdrm_nouveau, mesa), plus CMake and Ninja on PATH.
 set -e
 
 SRC_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -16,7 +16,6 @@ cd "$BUILD_DIR"
   -DCMAKE_BUILD_TYPE=Release \
   -DBUILD_NOGUI_FRONTEND=ON \
   -DBUILD_QT_FRONTEND=OFF \
-  -DENABLE_OPENGL=OFF \
   -DENABLE_VULKAN=OFF \
   -DENABLE_CUBEB=OFF \
   -DENABLE_DEKO3D=OFF \

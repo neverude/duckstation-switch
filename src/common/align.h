@@ -95,8 +95,13 @@ ALWAYS_INLINE static void* AlignedMalloc(size_t size, size_t alignment)
     if (IsPow2(alignment))
       size = (size + alignment - 1) & ~(alignment - 1);
 #endif
+#ifdef __SWITCH__
+  // newlib on Switch has no posix_memalign().
+  return aligned_alloc(alignment, size);
+#else
   void* ret = nullptr;
   return (posix_memalign(&ret, alignment, size) == 0) ? ret : nullptr;
+#endif
 #endif
 }
 

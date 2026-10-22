@@ -206,6 +206,8 @@ public:
     {
 #ifdef _MSC_VER
       this->m_ptr = static_cast<T*>(_aligned_malloc(sizeof(T) * CAPACITY, ALIGNMENT));
+#elif defined(__SWITCH__)
+      this->m_ptr = static_cast<T*>(aligned_alloc(ALIGNMENT, sizeof(T) * CAPACITY));
 #else
       if (posix_memalign(reinterpret_cast<void**>(&this->m_ptr), ALIGNMENT, sizeof(T) * CAPACITY) != 0)
         this->m_ptr = nullptr;

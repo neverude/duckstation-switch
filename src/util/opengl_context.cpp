@@ -23,6 +23,7 @@
 #include "opengl_context_egl_android.h"
 #else
 #ifdef ENABLE_EGL
+#include "opengl_context_egl.h"
 #ifdef ENABLE_WAYLAND
 #include "opengl_context_egl_wayland.h"
 #endif
@@ -36,7 +37,8 @@ Log_SetChannel(OpenGLContext);
 
 static bool ShouldPreferESContext()
 {
-#if defined(__ANDROID__)
+#if defined(__ANDROID__) || defined(__SWITCH__)
+  // Switch only offers OpenGL ES.
   return true;
 #elif !defined(_MSC_VER)
   const char* value = std::getenv("PREFER_GLES_CONTEXT");
@@ -168,7 +170,7 @@ std::unique_ptr<OpenGLContext> OpenGLContext::Create(const WindowInfo& wi, Error
   if (wi.type == WindowInfo::Type::Wayland)
     context = OpenGLContextEGLWayland::Create(wi, versions_to_try, error);
 #endif
-  if (wi.type == WindowInfo::Type::Surfaceless)
+  if (wi.type == WindowInfo::Type::Surfaceless || wi.type == WindowInfo::Type::Switch)
     context = OpenGLContextEGL::Create(wi, versions_to_try, error);
 #endif
 

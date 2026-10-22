@@ -238,8 +238,8 @@ RenderAPI GPUDevice::GetPreferredAPI()
     preferred_renderer = RenderAPI::OpenGL;
 #elif defined(ENABLE_VULKAN)
     preferred_renderer = RenderAPI::Vulkan;
-#elif defined(__SWITCH__)
-  return RenderAPI::Deko3D;
+#elif defined(ENABLE_DEKO3D)
+    preferred_renderer = RenderAPI::Deko3D;
 #else
     // Uhhh, what?
     Log_ErrorPrint("Somehow don't have any renderers available...");

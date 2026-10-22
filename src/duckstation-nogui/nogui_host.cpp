@@ -647,8 +647,12 @@ void NoGUIHost::CPUThreadEntryPoint()
   }
 
   // start the fullscreen UI and get it going
-  if (Host::CreateGPUDevice(Settings::GetRenderAPIForRenderer(g_settings.gpu_renderer)) && FullscreenUI::Initialize())
+  Log_InfoPrint("Creating GPU device...");
+  const bool gpu_ok = Host::CreateGPUDevice(Settings::GetRenderAPIForRenderer(g_settings.gpu_renderer));
+  Log_InfoFmt("GPU device: {}", gpu_ok ? "ok" : "FAILED");
+  if (gpu_ok && FullscreenUI::Initialize())
   {
+    Log_InfoPrint("Entering main loop.");
     // kick a game list refresh if we're not in batch mode
     if (!InBatchMode())
       Host::RefreshGameListAsync(false);
@@ -1383,6 +1387,11 @@ int main(int argc, char* argv[])
   }
 
   switch_program_path = argv[0];
+
+  // Log to the SD card, so startup problems can be read from the file after a crash.
+  FileSystem::EnsureDirectoryExists("sdmc:/switch/duckstation", true);
+  Log::SetFileOutputParams(true, "sdmc:/switch/duckstation/duckstation.log");
+  Log_InfoFmt("DuckStation Switch startup, program path '{}'", switch_program_path);
 
   // slight hack, but passing arguments with a dash does
   // not seem to work via nxlink so we cannot enable

@@ -104,6 +104,11 @@ if(ENABLE_OPENGL)
   target_compile_definitions(util PUBLIC "ENABLE_OPENGL=1")
   target_link_libraries(util PRIVATE glad)
 
+  if(NINTENDO_SWITCH)
+    # Mesa from devkitPro portlibs (switch-mesa), static EGL + GLES.
+    target_link_libraries(util PRIVATE EGL GLESv2 glapi drm_nouveau)
+  endif()
+
   if(WIN32)
     target_sources(util PRIVATE
       opengl_context_wgl.cpp
@@ -112,7 +117,7 @@ if(ENABLE_OPENGL)
     target_link_libraries(util PRIVATE "opengl32.lib")
   endif()
 
-  if(LINUX OR FREEBSD OR ANDROID)
+  if(LINUX OR FREEBSD OR ANDROID OR NINTENDO_SWITCH)
     target_sources(util PRIVATE
       opengl_context_egl.cpp
       opengl_context_egl.h
