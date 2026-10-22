@@ -8,6 +8,8 @@
 
 #ifdef _WIN32
 #include "windows_headers.h"
+#elif defined(__SWITCH__)
+#include <switch.h>
 #else
 #include <errno.h>
 #include <sys/time.h>
@@ -148,9 +150,13 @@ double Timer::GetFrequency()
 
 Timer::Value Timer::GetCurrentValue()
 {
+#ifdef __SWITCH__
+  return armTicksToNs(armGetSystemTick());
+#else
   struct timespec tv;
   clock_gettime(CLOCK_MONOTONIC, &tv);
   return ((Value)tv.tv_nsec + (Value)tv.tv_sec * 1000000000);
+#endif
 }
 
 double Timer::ConvertValueToNanoseconds(Timer::Value value)
@@ -202,7 +208,7 @@ void Timer::SleepUntil(Value value, bool exact)
   else
   {
     // Apple doesn't have TIMER_ABSTIME, so fall back to nanosleep in such a case.
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__SWITCH__)
     for (;;)
     {
       const Value current_time = GetCurrentValue();
@@ -210,6 +216,10 @@ void Timer::SleepUntil(Value value, bool exact)
         return;
 
       const Value diff = value - current_time;
+#ifdef __SWITCH__
+      svcSleepThread(diff);
+      break;
+#else
       struct timespec ts;
       ts.tv_sec = diff / UINT64_C(1000000000);
       ts.tv_nsec = diff % UINT64_C(1000000000);
@@ -219,6 +229,7 @@ void Timer::SleepUntil(Value value, bool exact)
         continue;
       else
         break;
+#endif
     }
 #else
     struct timespec ts;
@@ -378,6 +389,8 @@ void Timer::NanoSleep(std::uint64_t ns)
 #elif defined(__ANDROID__)
   // Round down to the next millisecond.
   usleep(static_cast<useconds_t>((ns / 1000000) * 1000));
+#elif defined(__SWITCH__)
+  svcSleepThread(ns);
 #else
   const struct timespec ts = {0, static_cast<long>(ns)};
   nanosleep(&ts, nullptr);

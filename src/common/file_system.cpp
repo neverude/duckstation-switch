@@ -289,6 +289,10 @@ bool Path::IsAbsolute(const std::string_view& path)
   return (path.length() >= 3 && ((path[0] >= 'A' && path[0] <= 'Z') || (path[0] >= 'a' && path[0] <= 'z')) &&
           path[1] == ':' && (path[2] == '/' || path[2] == '\\')) ||
          IsUNCPath(path);
+#elif defined(__SWITCH__)
+  return (path.length() >= 1 && path[0] == '/') ||
+    StringUtil::StartsWithNoCase(path, "sdmc:") ||
+    StringUtil::StartsWithNoCase(path, "romfs:");
 #else
   return (path.length() >= 1 && path[0] == '/');
 #endif
@@ -296,6 +300,23 @@ bool Path::IsAbsolute(const std::string_view& path)
 
 std::string Path::RealPath(const std::string_view& path)
 {
+#ifdef __SWITCH__
+  // Symlinks don't exist on Switch, so our life is easy
+
+  std::string realpath;
+  if (!IsAbsolute(path))
+    realpath = Path::Combine(FileSystem::GetWorkingDirectory(), path);
+  else
+    realpath = path;
+
+  if (realpath[0] == '/')
+  {
+    std::string prefixedpath{"sdmc:"};
+    prefixedpath += realpath;
+    realpath = std::move(prefixedpath);
+  }
+
+#else
   // Resolve non-absolute paths first.
   std::vector<std::string_view> components;
   if (!IsAbsolute(path))
@@ -463,6 +484,7 @@ std::string Path::RealPath(const std::string_view& path)
       }
     }
   }
+#endif
 #endif
 
   // Get rid of any current/parent directory components before returning.
@@ -830,6 +852,8 @@ std::vector<std::string> FileSystem::GetRootDirectoryList()
       ptr += len + 1u;
     }
   }
+#elif defined(__SWITCH__)
+  results.push_back("sdmc:");
 #else
   const char* home_path = std::getenv("HOME");
   if (home_path)
@@ -1868,6 +1892,12 @@ static u32 RecursiveFindFiles(const char* OriginPath, const char* ParentPath, co
     tempStr = fmt::format("{}", OriginPath);
   }
 
+#ifdef __SWITCH__
+  // on Switch sdmc: is not a valid directory
+  if (tempStr[tempStr.size()-1] == ':')
+    tempStr += "/";
+#endif
+
   DIR* pDir = opendir(tempStr.c_str());
   if (!pDir)
     return 0;
@@ -1906,7 +1936,7 @@ static u32 RecursiveFindFiles(const char* OriginPath, const char* ParentPath, co
     FILESYSTEM_FIND_DATA outData;
     outData.Attributes = 0;
 
-#if defined(__HAIKU__) || defined(__APPLE__) || defined(__FreeBSD__)
+#if defined(__HAIKU__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__SWITCH__)
     struct stat sDir;
     if (stat(full_path.c_str(), &sDir) < 0)
       continue;
@@ -2036,7 +2066,7 @@ bool FileSystem::StatFile(const char* path, FILESYSTEM_STAT_DATA* sd)
     return false;
 
     // stat file
-#if defined(__HAIKU__) || defined(__APPLE__) || defined(__FreeBSD__)
+#if defined(__HAIKU__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__SWITCH__)
   struct stat sysStatData;
   if (stat(path, &sysStatData) < 0)
 #else
@@ -2069,7 +2099,7 @@ bool FileSystem::StatFile(std::FILE* fp, FILESYSTEM_STAT_DATA* sd)
     return false;
 
     // stat file
-#if defined(__HAIKU__) || defined(__APPLE__) || defined(__FreeBSD__)
+#if defined(__HAIKU__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__SWITCH__)
   struct stat sysStatData;
   if (fstat(fd, &sysStatData) < 0)
 #else
@@ -2101,8 +2131,8 @@ bool FileSystem::FileExists(const char* path)
   if (path[0] == '\0')
     return false;
 
-    // stat file
-#if defined(__HAIKU__) || defined(__APPLE__) || defined(__FreeBSD__)
+  // stat file
+#if defined(__HAIKU__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__SWITCH__)
   struct stat sysStatData;
   if (stat(path, &sysStatData) < 0)
 #else
@@ -2123,8 +2153,8 @@ bool FileSystem::DirectoryExists(const char* path)
   if (path[0] == '\0')
     return false;
 
-    // stat file
-#if defined(__HAIKU__) || defined(__APPLE__) || defined(__FreeBSD__)
+  // stat file
+#if defined(__HAIKU__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__SWITCH__)
   struct stat sysStatData;
   if (stat(path, &sysStatData) < 0)
 #else
@@ -2261,6 +2291,11 @@ bool FileSystem::RenamePath(const char* old_path, const char* new_path, Error* e
     return false;
   }
 
+#ifdef __SWITCH__
+  // technically makes tempfile + rename unsafe
+  DeleteFile(new_path);
+#endif
+
   if (rename(old_path, new_path) != 0)
   {
     const int err = errno;
@@ -2283,6 +2318,10 @@ bool FileSystem::DeleteDirectory(const char* path)
 
   return (rmdir(path) == 0);
 }
+
+#ifdef __SWITCH__
+extern std::string switch_program_path;
+#endif
 
 std::string FileSystem::GetProgramPath()
 {
@@ -2349,6 +2388,8 @@ std::string FileSystem::GetProgramPath()
 
   buffer[cb] = '\0';
   return buffer;
+#elif defined(__SWITCH__)
+  return switch_program_path;
 #else
   return {};
 #endif
@@ -2380,7 +2421,8 @@ bool FileSystem::SetPathCompression(const char* path, bool enable)
   return false;
 }
 
-static bool SetLock(int fd, bool lock)
+#ifndef __SWITCH__
+static bool SetLockLock(int fd, bool lock)
 {
   // We want to lock the whole file.
   const off_t offs = lseek(fd, 0, SEEK_CUR);
@@ -2423,5 +2465,6 @@ FileSystem::POSIXLock::~POSIXLock()
   if (m_fd >= 0)
     SetLock(m_fd, false);
 }
+#endif
 
 #endif

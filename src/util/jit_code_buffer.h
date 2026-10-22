@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: (GPL-3.0 OR CC-BY-NC-ND-4.0)
 
 #pragma once
+#ifdef __SWITCH__
+#include <switch.h>
+#endif
 #include "common/types.h"
 
 class JitCodeBuffer
@@ -40,6 +43,15 @@ public:
   ALWAYS_INLINE u32 GetFreeFarCodeSpace() const { return static_cast<u32>(m_far_code_size - m_far_code_used); }
   void CommitFarCode(u32 length);
 
+  ALWAYS_INLINE ptrdiff_t GetRWDiff()
+  {
+#ifdef __SWITCH__
+    return m_rw_ptr - m_code_ptr;
+#else
+    return 0;
+#endif
+  }
+
   /// Adjusts the free code pointer to the specified alignment, padding with bytes.
   /// Assumes alignment is a power-of-two.
   void Align(u32 alignment, u8 padding_value);
@@ -50,6 +62,11 @@ public:
 private:
   bool TryAllocateAt(const void* addr);
 
+#ifdef __SWITCH__
+  u8* m_base_memory = nullptr;
+  u8* m_rw_ptr = nullptr;
+  VirtmemReservation* m_rx_reservation = nullptr, *m_rw_reservation = nullptr;
+#endif
   u8* m_code_ptr = nullptr;
   u8* m_free_code_ptr = nullptr;
   u32 m_code_size = 0;

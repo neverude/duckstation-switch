@@ -36,6 +36,10 @@ Log_SetChannel(GPUDevice);
 #include "vulkan_device.h"
 #endif
 
+#ifdef __SWITCH__
+#include "deko3d_device.h"
+#endif
+
 std::unique_ptr<GPUDevice> g_gpu_device;
 
 static std::string s_pipeline_cache_path;
@@ -234,6 +238,8 @@ RenderAPI GPUDevice::GetPreferredAPI()
     preferred_renderer = RenderAPI::OpenGL;
 #elif defined(ENABLE_VULKAN)
     preferred_renderer = RenderAPI::Vulkan;
+#elif defined(__SWITCH__)
+  return RenderAPI::Deko3D;
 #else
     // Uhhh, what?
     Log_ErrorPrint("Somehow don't have any renderers available...");
@@ -257,6 +263,7 @@ const char* GPUDevice::RenderAPIToString(RenderAPI api)
     CASE(Vulkan);
     CASE(OpenGL);
     CASE(OpenGLES);
+    CASE(Deko3D);
 #undef CASE
       // clang-format on
     default:
@@ -422,6 +429,11 @@ std::string GPUDevice::GetShaderCacheBaseName(const std::string_view& type) cons
 #ifdef __APPLE__
     case RenderAPI::Metal:
       ret = fmt::format("metal_{}{}", type, debug_suffix);
+      break;
+#endif
+#ifdef __SWITCH__
+    case RenderAPI::Deko3D:
+      ret = fmt::format("deko3d_{}{}", type, debug_suffix);
       break;
 #endif
     default:
@@ -791,7 +803,7 @@ bool GPUDevice::UpdateImGuiFontTexture()
 bool GPUDevice::UsesLowerLeftOrigin() const
 {
   const RenderAPI api = GetRenderAPI();
-  return (api == RenderAPI::OpenGL || api == RenderAPI::OpenGLES);
+  return (api == RenderAPI::OpenGL || api == RenderAPI::OpenGLES || api == RenderAPI::Deko3D);
 }
 
 Common::Rectangle<s32> GPUDevice::FlipToLowerLeft(const Common::Rectangle<s32>& rc, s32 target_height)
@@ -1099,6 +1111,11 @@ std::unique_ptr<GPUDevice> GPUDevice::CreateDeviceForAPI(RenderAPI api)
 #ifdef __APPLE__
     case RenderAPI::Metal:
       return WrapNewMetalDevice();
+#endif
+
+#ifdef __SWITCH__
+    case RenderAPI::Deko3D:
+      return std::make_unique<Deko3DDevice>();
 #endif
 
     default:

@@ -483,6 +483,8 @@ struct Settings
   static constexpr AudioBackend DEFAULT_AUDIO_BACKEND = AudioBackend::Cubeb;
 #elif defined(_WIN32)
   static constexpr AudioBackend DEFAULT_AUDIO_BACKEND = AudioBackend::XAudio2;
+#elif defined(__SWITCH__)
+  static constexpr AudioBackend DEFAULT_AUDIO_BACKEND = AudioBackend::Switch;
 #elif defined(__ANDROID__)
   static constexpr AudioBackend DEFAULT_AUDIO_BACKEND = AudioBackend::AAudio;
 #elif defined(ENABLE_SDL2)

@@ -1431,7 +1431,7 @@ void CPU::CodeCache::BacklinkBlocks(u32 pc, const void* dst)
   {
     Log_DebugPrintf("Backlinking %p with dst pc %08X to %p%s", it->second, pc, dst,
                     (dst == g_compile_or_revalidate_block) ? "[compiler]" : "");
-    EmitJump(it->second, dst, true);
+    EmitJump(it->second, dst, s_code_buffer.GetRWDiff(), true);
   }
 }
 
@@ -1483,7 +1483,8 @@ void CPU::CodeCache::CompileASMFunctions()
 {
   MemMap::BeginCodeWrite();
 
-  const u32 asm_size = EmitASMFunctions(s_code_buffer.GetFreeCodePointer(), s_code_buffer.GetFreeCodeSpace());
+  const u32 asm_size =
+    EmitASMFunctions(s_code_buffer.GetFreeCodePointer(), s_code_buffer.GetFreeCodeSpace(), s_code_buffer.GetRWDiff());
 
 #ifdef ENABLE_RECOMPILER_PROFILING
   MIPSPerfScope.Register(s_code_buffer.GetFreeCodePointer(), asm_size, "ASMFunctions");
@@ -1682,7 +1683,7 @@ void CPU::CodeCache::BackpatchLoadStore(void* host_pc, const LoadstoreBackpatchI
 {
 #ifdef ENABLE_RECOMPILER
   if (g_settings.cpu_execution_mode == CPUExecutionMode::Recompiler)
-    Recompiler::CodeGenerator::BackpatchLoadStore(host_pc, info);
+    Recompiler::CodeGenerator::BackpatchLoadStore(host_pc, &s_code_buffer, info);
 #endif
 #ifdef ENABLE_NEWREC
   if (g_settings.cpu_execution_mode == CPUExecutionMode::NewRec)

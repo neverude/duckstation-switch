@@ -55,6 +55,9 @@ public:
 #ifdef ENABLE_SDL2
   static std::unique_ptr<NoGUIPlatform> CreateSDLPlatform();
 #endif
+#ifdef __SWITCH__
+  static std::unique_ptr<NoGUIPlatform> CreateSwitchPlatform();
+#endif
 #ifdef NOGUI_PLATFORM_WAYLAND
   static std::unique_ptr<NoGUIPlatform> CreateWaylandPlatform();
 #endif

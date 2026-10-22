@@ -30,6 +30,8 @@ Log_SetChannel(Common::PageFaultHandler);
 #include <mach/mach_init.h>
 #include <mach/mach_port.h>
 #include <mach/task.h>
+#elif defined(__SWITCH__)
+#include "switch_exception_frame.h"
 #endif
 
 namespace Common::PageFaultHandler {
@@ -235,6 +237,32 @@ static void SignalHandler(int sig, siginfo_t* info, void* ctx)
   CallExistingSignalHandler(sig, info, ctx);
 }
 
+#elif defined(__SWITCH__)
+
+bool PageFaultHandler(ExceptionFrameA64* frame)
+{
+  // Executing the handler concurrently from multiple threads wouldn't go down well.
+  std::unique_lock lock(s_exception_handler_mutex);
+
+  // Prevent recursive exception filtering.
+  if (s_in_exception_handler)
+    return false;
+
+  void* const exception_pc = reinterpret_cast<void*>(frame->pc);
+  void* const exception_address = reinterpret_cast<void*>(frame->far);
+  const bool is_write = IsStoreInstruction(exception_pc);
+
+  s_in_exception_handler = true;
+
+  HandlerResult handled = HandlerResult::ExecuteNextHandler;
+  if (s_exception_handler_callback)
+    handled = s_exception_handler_callback(exception_pc, exception_address, is_write);
+
+  s_in_exception_handler = false;
+
+  return handled == HandlerResult::ContinueExecution;
+}
+
 #endif
 
 bool InstallHandler(Handler handler)
@@ -270,7 +298,7 @@ bool InstallHandler(Handler handler)
 #ifdef __APPLE__
     task_set_exception_ports(mach_task_self(), EXC_MASK_BAD_ACCESS, MACH_PORT_NULL, EXCEPTION_DEFAULT, 0);
 #endif
-#else
+#elif !defined(__SWITCH__) // handler is staically linked on Switch
     return false;
 #endif
   }
@@ -302,7 +330,7 @@ bool RemoveHandler(Handler handler)
   sigaction(SIGSEGV, &s_old_sigsegv_action, &sa);
   s_old_sigsegv_action = {};
 #endif
-#else
+#elif !defined(__SWITCH__) // handler is statically linked on Switch
   return false;
 #endif
 

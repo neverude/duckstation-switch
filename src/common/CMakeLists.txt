@@ -10,8 +10,6 @@ add_library(common
   crash_handler.cpp
   crash_handler.h
   dimensional_array.h
-  dynamic_library.cpp
-  dynamic_library.h
   error.cpp
   error.h
   fastjmp.cpp
@@ -57,10 +55,20 @@ add_library(common
   types.h
 )
 
+if (NOT NINTENDO_SWITCH)
+  target_sources(common PRIVATE
+    dynamic_library.cpp
+    dynamic_library.h
+  )
+endif()
+
 target_include_directories(common PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/..")
 target_include_directories(common PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
+
 target_link_libraries(common PUBLIC fmt Threads::Threads fast_float)
-target_link_libraries(common PRIVATE "${CMAKE_DL_LIBS}")
+if (NOT NINTENDO_SWITCH)
+  target_link_libraries(common PRIVATE "${CMAKE_DL_LIBS}")
+endif()
 
 if(WIN32)
   target_sources(common PRIVATE
@@ -96,6 +104,11 @@ endif()
 if(NOT WIN32 AND NOT ANDROID AND LIBBACKTRACE_FOUND)
   target_compile_definitions(common PRIVATE "-DENABLE_LIBBACKTRACE=1")
   target_link_libraries(common PRIVATE libbacktrace::libbacktrace)
+endif()
+
+if (NINTENDO_SWITCH)
+  # switch curl depends on libnx, so we have to link it here...
+  target_link_libraries(common PRIVATE uam "${NX_LIBRARIES}")
 endif()
 
 if(ANDROID)

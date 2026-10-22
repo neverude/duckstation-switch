@@ -44,6 +44,9 @@ Value CodeGenerator::EmitLoadGuestMemory(Instruction instruction, const CodeCach
     {
       Value result = m_register_cache.AllocateScratch(size);
 
+      // on Switch we can't do read only mappings
+      // so all memory accesses need to be patchable
+#ifndef __SWITCH__
       // TODO: mask off...
       if (CodeCache::IsUsingFastmem() && Bus::IsRAMAddress(static_cast<u32>(address.constant_value)))
       {
@@ -52,6 +55,7 @@ Value CodeGenerator::EmitLoadGuestMemory(Instruction instruction, const CodeCach
                                 size, result);
       }
       else
+#endif
       {
         EmitLoadGlobal(result.GetHostRegister(), size, ptr);
       }

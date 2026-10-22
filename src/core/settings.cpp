@@ -1014,6 +1014,9 @@ static constexpr const std::array s_gpu_renderer_names = {
 #ifdef ENABLE_OPENGL
   "OpenGL",
 #endif
+#ifdef __SWITCH__
+  "deko3D",
+#endif
   "Software",
 };
 static constexpr const std::array s_gpu_renderer_display_names = {
@@ -1029,6 +1032,9 @@ static constexpr const std::array s_gpu_renderer_display_names = {
 #endif
 #ifdef ENABLE_OPENGL
   TRANSLATE_NOOP("GPURenderer", "OpenGL"),
+#endif
+#ifdef __SWITCH__
+  TRANSLATE_NOOP("GPURenderer", "Hardware (deko3D)"),
 #endif
   TRANSLATE_NOOP("GPURenderer", "Software"),
 };
@@ -1574,6 +1580,9 @@ const char* Settings::GetDisplayScreenshotFormatExtension(DisplayScreenshotForma
 
 static constexpr const std::array s_audio_backend_names = {
   "Null",
+#ifdef __SWITCH__
+  "Switch",
+#endif
 #ifdef ENABLE_CUBEB
   "Cubeb",
 #endif
@@ -1589,6 +1598,9 @@ static constexpr const std::array s_audio_backend_names = {
 };
 static constexpr const std::array s_audio_backend_display_names = {
   TRANSLATE_NOOP("AudioBackend", "Null (No Output)"),
+#ifdef __SWITCH__
+  TRANSLATE_NOOP("AudioBackend", "Nintendo Switch"),
+#endif
 #ifdef ENABLE_CUBEB
   TRANSLATE_NOOP("AudioBackend", "Cubeb"),
 #endif
@@ -1629,7 +1641,7 @@ const char* Settings::GetAudioBackendDisplayName(AudioBackend backend)
 }
 
 static constexpr const std::array s_controller_type_names = {
-  "None", "DigitalController", "AnalogController", "AnalogJoystick", "GunCon", "PlayStationMouse", "NeGcon"};
+  "None", "DigitalController", "AnalogController", "AnalogJoystick", "GunCon", "PlayStationMouse", "NeGcon", "NeGconRumble"};
 static constexpr const std::array s_controller_display_names = {
   TRANSLATE_NOOP("ControllerType", "None"),
   TRANSLATE_NOOP("ControllerType", "Digital Controller"),
@@ -1637,7 +1649,8 @@ static constexpr const std::array s_controller_display_names = {
   TRANSLATE_NOOP("ControllerType", "Analog Joystick"),
   TRANSLATE_NOOP("ControllerType", "GunCon"),
   TRANSLATE_NOOP("ControllerType", "PlayStation Mouse"),
-  TRANSLATE_NOOP("ControllerType", "NeGcon")};
+  TRANSLATE_NOOP("ControllerType", "NeGcon"),
+  TRANSLATE_NOOP("ControllerType", "NeGcon Rumble")};
 
 std::optional<ControllerType> Settings::ParseControllerTypeName(std::string_view str)
 {

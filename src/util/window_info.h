@@ -17,6 +17,7 @@ struct WindowInfo
     MacOS,
     Android,
     Display,
+    Switch
   };
 
   Type type = Type::Surfaceless;

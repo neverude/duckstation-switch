@@ -1764,7 +1764,7 @@ void CodeGenerator::EmitStoreGuestMemorySlowmem(Instruction instruction, const C
   }
 }
 
-void CodeGenerator::BackpatchLoadStore(void* host_pc, const CodeCache::LoadstoreBackpatchInfo& lbi)
+void CodeGenerator::BackpatchLoadStore(void* host_pc, JitCodeBuffer* code_buffer, const CodeCache::LoadstoreBackpatchInfo& lbi)
 {
   Log_DevFmt("Backpatching {} (guest PC 0x{:08X}) to slowmem at {}", host_pc, lbi.guest_pc, lbi.thunk_address);
 

@@ -23,7 +23,11 @@
 #else
 #include <sys/stat.h>
 #include <sys/types.h>
+#ifdef __SWITCH__
+#include <fcntl.h>
 #endif
+#endif
+
 
 #ifdef _MSC_VER
 #include <malloc.h>
@@ -48,6 +52,10 @@ public:
     if (m_errorState)
       return false;
 
+// bizarre workaround to make file access faster
+#ifdef _SWITCH__
+    SeekAbsolute(GetPosition());
+#endif
     if (fread(pDestByte, 1, 1, m_pFile) != 1)
     {
       m_errorState = true;
@@ -62,6 +70,9 @@ public:
     if (m_errorState)
       return 0;
 
+#ifdef __SWITCH__
+    SeekAbsolute(GetPosition());
+#endif
     u32 readCount = (u32)fread(pDestination, 1, ByteCount, m_pFile);
     if (readCount != ByteCount && ferror(m_pFile) != 0)
       m_errorState = true;
@@ -326,6 +337,13 @@ public:
       m_committed = true;
     }
 #else
+#ifdef __SWITCH__
+    // create a temporary name for the file
+    std::string tempOriginal = m_temporaryFileName + ".original";
+    rename(m_originalFileName.c_str(), tempOriginal.c_str());
+    off_t position = ftell(m_pFile);
+    fclose(m_pFile);
+#endif
     // move the atomic file name to the original file name
     if (rename(m_temporaryFileName.c_str(), m_originalFileName.c_str()) < 0)
     {
@@ -337,6 +355,15 @@ public:
     {
       m_committed = true;
     }
+
+#ifdef __SWITCH__
+    int fd = fileno(m_pFile);
+    int accmode = fcntl(fd, F_GETFL) & O_ACCMODE;
+    m_pFile = fopen(m_originalFileName.c_str(), accmode == O_RDONLY ? "rb" : "rb+");
+    fseek(m_pFile, position, SEEK_SET);
+
+    remove(tempOriginal.c_str());
+#endif
 #endif
 
     return (!m_discarded);
@@ -1126,10 +1153,10 @@ std::unique_ptr<ByteStream> ByteStream::OpenFile(const char* fileName, u32 openM
     std::snprintf(temporaryFileName, fileNameLength + 8, "%s.XXXXXX", fileName);
 
     // fill in random characters
-#if defined(__linux__) || defined(__ANDROID__) || defined(__APPLE__)
-    mkstemp(temporaryFileName);
+#if defined(__linux__) || defined(__ANDROID__) || defined(__APPLE__) || defined(__SWITCH__)
+    close(mkstemp(temporaryFileName));
 #else
-    mktemp(temporaryFileName);
+    close(mktemp(temporaryFileName));
 #endif
 
     // open the file

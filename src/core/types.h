@@ -73,6 +73,9 @@ enum class GPURenderer : u8
 #ifdef ENABLE_OPENGL
   HardwareOpenGL,
 #endif
+#ifdef __SWITCH__
+  HardwareDeko3D,
+#endif
   Software,
   Count
 };
@@ -201,6 +204,9 @@ enum class AudioBackend : u8
   AAudio,
   OpenSLES,
 #endif
+#ifdef __SWITCH__
+  Switch,
+#endif
   Count
 };
 
@@ -213,6 +219,7 @@ enum class ControllerType
   GunCon,
   PlayStationMouse,
   NeGcon,
+  NeGconRumble,
   Count
 };
 

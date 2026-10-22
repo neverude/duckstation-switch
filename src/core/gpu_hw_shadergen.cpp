@@ -56,7 +56,7 @@ void GPU_HW_ShaderGen::WriteBatchUniformBuffer(std::stringstream& ss)
                        {"uint2 u_texture_window_and", "uint2 u_texture_window_or", "float u_src_alpha_factor",
                         "float u_dst_alpha_factor", "uint u_interlaced_displayed_field",
                         "bool u_set_mask_while_drawing"},
-                       false);
+                       true);
 }
 
 std::string GPU_HW_ShaderGen::GenerateBatchVertexShader(bool textured, bool pgxp_depth)
@@ -118,7 +118,7 @@ std::string GPU_HW_ShaderGen::GenerateBatchVertexShader(bool textured, bool pgxp
 #endif
 
   // NDC space Y flip in Vulkan.
-#if API_OPENGL || API_OPENGL_ES || API_VULKAN
+#if API_OPENGL || API_OPENGL_ES || API_VULKAN || API_DEKO3D
   pos_y = -pos_y;
 #endif
 
@@ -1437,7 +1437,7 @@ std::string GPU_HW_ShaderGen::GenerateAdaptiveDownsampleVertexShader()
   v_tex0 = float2(float((v_id << 1) & 2u), float(v_id & 2u));
   v_pos = float4(v_tex0 * float2(2.0f, -2.0f) + float2(-1.0f, 1.0f), 0.0f, 1.0f);
   v_tex0 = u_uv_min + (u_uv_max - u_uv_min) * v_tex0;
-  #if API_OPENGL || API_OPENGL_ES || API_VULKAN
+  #if API_OPENGL || API_OPENGL_ES || API_VULKAN || API_DEKO3D
     v_pos.y = -v_pos.y;
   #endif
 }

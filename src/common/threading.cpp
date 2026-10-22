@@ -33,6 +33,8 @@
 #include <mach/mach_time.h>
 #include <mach/semaphore.h>
 #include <mach/task.h>
+#elif defined(__SWITCH__)
+#include <switch.h>
 #else
 #include <pthread_np.h>
 #endif
@@ -473,7 +475,9 @@ u64 Threading::GetThreadCpuTime()
   return user.u64time + kernel.u64time;
 #elif defined(__APPLE__)
   return getthreadtime(pthread_mach_thread_np(pthread_self()));
-#else
+#elif defined(__SWITCH__)
+  return armGetSystemTick();
+#elif
   return get_thread_time(nullptr);
 #endif
 }
@@ -509,7 +513,8 @@ u64 Threading::GetThreadTicksPerSecond()
   return 10000000;
 #elif defined(__APPLE__)
   return 1000000;
-
+#elif defined(__SWITCH__)
+  return armNsToTicks(1000000000);
 #else
   return 1000000;
 #endif
@@ -556,7 +561,7 @@ void Threading::SetNameOfCurrentThread(const char* name)
   prctl(PR_SET_NAME, name, 0, 0, 0);
 #elif defined(__APPLE__)
   pthread_setname_np(name);
-#else
+#elif !defined(__SWITCH__)
   pthread_set_name_np(pthread_self(), name);
 #endif
 }

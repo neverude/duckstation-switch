@@ -43,13 +43,11 @@
 #include <csignal>
 #include <thread>
 
-Log_SetChannel(NoGUIHost);
-
-#ifdef _WIN32
-#include "common/windows_headers.h"
-#include <ShlObj.h>
-#include <shellapi.h>
+#ifdef __SWITCH__
+#include <switch.h>
 #endif
+
+Log_SetChannel(NoGUIHost);
 
 static constexpr u32 SETTINGS_VERSION = 3;
 static constexpr auto CPU_THREAD_POLL_INTERVAL =
@@ -119,7 +117,6 @@ static std::string GetResourcePath(std::string_view name, bool allow_override);
 static void StartCPUThread();
 static void StopCPUThread();
 static void ProcessCPUThreadEvents(bool block);
-static void ProcessCPUThreadPlatformMessages();
 static void CPUThreadEntryPoint();
 static void CPUThreadMainLoop();
 static std::unique_ptr<NoGUIPlatform> CreatePlatform();
@@ -150,6 +147,10 @@ static std::mutex s_async_op_mutex;
 static std::thread s_async_op_thread;
 static AsyncOpProgressCallback* s_async_op_progress = nullptr;
 } // namespace NoGUIHost
+
+#ifdef __SWITCH__
+std::string switch_program_path;
+#endif
 
 //////////////////////////////////////////////////////////////////////////
 // Initialization/Shutdown
@@ -196,12 +197,10 @@ void NoGUIHost::SetAppRoot()
 
 void NoGUIHost::SetResourcesDirectory()
 {
-#ifndef __APPLE__NOT_USED // Not using bundles yet.
-  // On Windows/Linux, these are in the binary directory.
-  EmuFolders::Resources = Path::Combine(EmuFolders::AppRoot, "resources");
+#ifdef NDEBUG
+  EmuFolders::Resources = "romfs:/resources";
 #else
-  // On macOS, this is in the bundle resources directory.
-  EmuFolders::Resources = Path::Canonicalize(Path::Combine(EmuFolders::AppRoot, "../Resources"));
+  EmuFolders::Resources = Path::Combine(EmuFolders::AppRoot, "resources");
 #endif
 }
 
@@ -216,43 +215,6 @@ void NoGUIHost::SetDataDirectory()
     EmuFolders::DataRoot = EmuFolders::AppRoot;
     return;
   }
-
-#if defined(_WIN32)
-  // On Windows, use My Documents\DuckStation.
-  PWSTR documents_directory;
-  if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Documents, 0, NULL, &documents_directory)))
-  {
-    if (std::wcslen(documents_directory) > 0)
-      EmuFolders::DataRoot = Path::Combine(StringUtil::WideStringToUTF8String(documents_directory), "DuckStation");
-    CoTaskMemFree(documents_directory);
-  }
-#elif defined(__linux__) || defined(__FreeBSD__)
-  // Use $XDG_CONFIG_HOME/duckstation if it exists.
-  const char* xdg_config_home = getenv("XDG_CONFIG_HOME");
-  if (xdg_config_home && Path::IsAbsolute(xdg_config_home))
-  {
-    EmuFolders::DataRoot = Path::RealPath(Path::Combine(xdg_config_home, "duckstation"));
-  }
-  else
-  {
-    // Use ~/.local/share/duckstation otherwise.
-    const char* home_dir = getenv("HOME");
-    if (home_dir)
-    {
-      // ~/.local/share should exist, but just in case it doesn't and this is a fresh profile..
-      const std::string local_dir(Path::Combine(home_dir, ".local"));
-      const std::string share_dir(Path::Combine(local_dir, "share"));
-      FileSystem::EnsureDirectoryExists(local_dir.c_str(), false);
-      FileSystem::EnsureDirectoryExists(share_dir.c_str(), false);
-      EmuFolders::DataRoot = Path::RealPath(Path::Combine(share_dir, "duckstation"));
-    }
-  }
-#elif defined(__APPLE__)
-  static constexpr char MAC_DATA_DIR[] = "Library/Application Support/DuckStation";
-  const char* home_dir = getenv("HOME");
-  if (home_dir)
-    EmuFolders::DataRoot = Path::RealPath(Path::Combine(home_dir, MAC_DATA_DIR));
-#endif
 
   // make sure it exists
   if (!EmuFolders::DataRoot.empty() && !FileSystem::DirectoryExists(EmuFolders::DataRoot.c_str()))
@@ -424,7 +386,7 @@ std::optional<std::vector<u8>> Host::ReadResourceFile(std::string_view filename,
   const std::string path = NoGUIHost::GetResourcePath(filename, allow_override);
   std::optional<std::vector<u8>> ret(FileSystem::ReadBinaryFile(path.c_str()));
   if (!ret.has_value())
-    Log_ErrorPrintf("Failed to read resource file '%s'", filename);
+    Log_ErrorFmt("Failed to read resource file '{}'", filename);
   return ret;
 }
 
@@ -433,7 +395,7 @@ std::optional<std::string> Host::ReadResourceFileToString(std::string_view filen
   const std::string path = NoGUIHost::GetResourcePath(filename, allow_override);
   std::optional<std::string> ret(FileSystem::ReadFileToString(path.c_str()));
   if (!ret.has_value())
-    Log_ErrorPrintf("Failed to read resource file to string '%s'", filename);
+    Log_ErrorFmt("Failed to read resource file to string '{}'", filename);
   return ret;
 }
 
@@ -443,7 +405,7 @@ std::optional<std::time_t> Host::GetResourceFileTimestamp(std::string_view filen
   FILESYSTEM_STAT_DATA sd;
   if (!FileSystem::StatFile(path.c_str(), &sd))
   {
-    Log_ErrorPrintf("Failed to stat resource file '%s'", filename);
+    Log_ErrorFmt("Failed to stat resource file '{}'", filename);
     return std::nullopt;
   }
 
@@ -461,6 +423,16 @@ void Host::CheckForSettingsChanges(const Settings& old_settings)
 void Host::CommitBaseSettingChanges()
 {
   NoGUIHost::SaveSettings();
+}
+
+void Host::RequestExitApplication(bool allow_confirm)
+{
+  NoGUIHost::StopRunning();
+}
+
+void Host::RequestExitBigPicture()
+{
+  NoGUIHost::StopRunning();
 }
 
 void NoGUIHost::SaveSettings()
@@ -484,7 +456,14 @@ void NoGUIHost::SetBatchMode(bool enabled)
 
 void NoGUIHost::StartSystem(SystemBootParameters params)
 {
-  Host::RunOnCPUThread([params = std::move(params)]() { System::BootSystem(std::move(params)); });
+  Host::RunOnCPUThread([params = std::move(params)]() {
+    Error error;
+    if (!System::BootSystem(std::move(params), &error))
+    {
+      Host::ReportErrorAsync(TRANSLATE_SV("System", "Error"),
+                             fmt::format(TRANSLATE_FS("System", "Failed to boot system: {}"), error.GetDescription()));
+    }
+  });
 }
 
 void NoGUIHost::ProcessPlatformWindowResize(s32 width, s32 height, float scale)
@@ -620,21 +599,6 @@ void NoGUIHost::StopCPUThread()
   s_cpu_thread.Join();
 }
 
-void NoGUIHost::ProcessCPUThreadPlatformMessages()
-{
-  // This is lame. On Win32, we need to pump messages, even though *we* don't have any windows
-  // on the CPU thread, because SDL creates a hidden window for raw input for some game controllers.
-  // If we don't do this, we don't get any controller events.
-#ifdef _WIN32
-  MSG msg;
-  while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE))
-  {
-    TranslateMessage(&msg);
-    DispatchMessageW(&msg);
-  }
-#endif
-}
-
 void NoGUIHost::ProcessCPUThreadEvents(bool block)
 {
   std::unique_lock lock(s_cpu_thread_events_mutex);
@@ -649,7 +613,6 @@ void NoGUIHost::ProcessCPUThreadEvents(bool block)
       // we still need to keep polling the controllers when we're paused
       do
       {
-        ProcessCPUThreadPlatformMessages();
         InputManager::PollSources();
       } while (!s_cpu_thread_event_posted.wait_for(lock, CPU_THREAD_POLL_INTERVAL,
                                                    []() { return !s_cpu_thread_events.empty(); }));
@@ -723,8 +686,8 @@ void NoGUIHost::CPUThreadMainLoop()
 
     Host::PumpMessagesOnCPUThread();
     System::Internal::IdlePollUpdate();
-    System::PresentDisplay(false);
-    if (!g_gpu_device->IsVSyncActive())
+    System::PresentDisplay(false, false);
+    if (!g_gpu_device->IsVSyncEnabled())
       g_gpu_device->ThrottlePresentation();
   }
 }
@@ -862,39 +825,12 @@ void Host::SetMouseMode(bool relative, bool hide_cursor)
 
 void Host::PumpMessagesOnCPUThread()
 {
-  NoGUIHost::ProcessCPUThreadPlatformMessages();
   NoGUIHost::ProcessCPUThreadEvents(false);
 }
 
 std::unique_ptr<NoGUIPlatform> NoGUIHost::CreatePlatform()
 {
-  std::unique_ptr<NoGUIPlatform> ret;
-
-  const char* platform = std::getenv("DUCKSTATION_NOGUI_PLATFORM");
-#ifdef ENABLE_SDL2
-  if (platform && StringUtil::Strcasecmp(platform, "sdl") == 0)
-    ret = NoGUIPlatform::CreateSDLPlatform();
-#endif
-
-#if defined(_WIN32)
-  if (!ret)
-    ret = NoGUIPlatform::CreateWin32Platform();
-#elif defined(__APPLE__)
-  if (!ret)
-    ret = NoGUIPlatform::CreateCocoaPlatform();
-#else
-  // linux
-#ifdef NOGUI_PLATFORM_WAYLAND
-  if (!ret && (!platform || StringUtil::Strcasecmp(platform, "wayland") == 0) && std::getenv("WAYLAND_DISPLAY"))
-    ret = NoGUIPlatform::CreateWaylandPlatform();
-#endif
-#ifdef NOGUI_PLATFORM_X11
-  if (!ret && (!platform || StringUtil::Strcasecmp(platform, "x11") == 0) && std::getenv("DISPLAY"))
-    ret = NoGUIPlatform::CreateX11Platform();
-#endif
-#endif
-
-  return ret;
+  return NoGUIPlatform::CreateSwitchPlatform();
 }
 
 std::string NoGUIHost::GetWindowTitle(const std::string& game_title)
@@ -987,7 +923,7 @@ std::optional<WindowInfo> Host::GetTopLevelWindowInfo()
   return g_nogui_window->GetPlatformWindowInfo();
 }
 
-void Host::RequestExit(bool allow_confirm)
+void NoGUIHost::StopRunning()
 {
   if (System::IsValid())
   {
@@ -1033,14 +969,14 @@ static void SignalHandler(int signal)
   {
     std::fprintf(stderr, "Received CTRL+C, attempting graceful shutdown. Press CTRL+C again to force.\n");
     graceful_shutdown_attempted = true;
-    Host::RequestExit(false);
+    NoGUIHost::StopRunning();
     return;
   }
 
   std::signal(signal, SIG_DFL);
 
   // MacOS is missing std::quick_exit() despite it being C++11...
-#ifndef __APPLE__
+#if !defined(__APPLE__) && !defined(__SWITCH__)
   std::quick_exit(1);
 #else
   _Exit(1);
@@ -1247,7 +1183,7 @@ bool NoGUIHost::ParseCommandLineParametersAndInitializeConfig(int argc, char* ar
   {
     // NOTE: No point translating this, because no config means the language won't be loaded anyway.
     g_nogui_window->ReportError("Error", "Failed to initialize config.");
-    return EXIT_FAILURE;
+    return false;
   }
 
   // Check the file we're starting actually exists.
@@ -1405,8 +1341,56 @@ void NoGUIHost::AsyncOpProgressCallback::SetCancelled()
     m_cancelled = true;
 }
 
+#ifdef __SWITCH__
+
+static int s_nxlink_stdio_handle;
+
+extern "C" void userAppInit()
+{
+  socketInitializeDefault();
+  s_nxlink_stdio_handle = nxlinkStdio();
+
+  romfsInit();
+}
+
+extern "C" void userAppExit()
+{
+  romfsExit();
+
+  socketExit();
+}
+#endif
+
 int main(int argc, char* argv[])
 {
+#ifdef __SWITCH__
+  // the earlier we do this the lesser the chance
+  // things crash and burn due to applet mode
+  if (appletGetAppletType() != AppletType_Application)
+  {
+    ErrorApplicationConfig errcfg;
+    errorApplicationCreate(
+      &errcfg,
+      "duckstation requires to be run in application mode. It does not work in applet (\"Album\") mode!"
+      "See details for more information.",
+      "The hbmenu needs to be started with title override. By default this is"
+      "accomplished by pressing R while starting any application from the homemenu\n\n"
+
+      "With Atmosphere's override_config.ini config file this behaviour can be customised.");
+    errorApplicationShow(&errcfg);
+
+    return 0;
+  }
+
+  switch_program_path = argv[0];
+
+  // slight hack, but passing arguments with a dash does
+  // not seem to work via nxlink so we cannot enable
+  // early logging via command line
+  if (s_nxlink_stdio_handle != -1)
+    NoGUIHost::InitializeEarlyConsole();
+#endif
+
   CrashHandler::Install();
 
   g_nogui_window = NoGUIHost::CreatePlatform();
@@ -1436,36 +1420,3 @@ int main(int argc, char* argv[])
   g_nogui_window.reset();
   return EXIT_SUCCESS;
 }
-
-#ifdef _WIN32
-
-int wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nShowCmd)
-{
-  std::vector<std::string> argc_strings;
-  argc_strings.reserve(1);
-
-  // CommandLineToArgvW() only adds the program path if the command line is empty?!
-  argc_strings.push_back(FileSystem::GetProgramPath());
-
-  if (std::wcslen(lpCmdLine) > 0)
-  {
-    int argc;
-    LPWSTR* argv_wide = CommandLineToArgvW(lpCmdLine, &argc);
-    if (argv_wide)
-    {
-      for (int i = 0; i < argc; i++)
-        argc_strings.push_back(StringUtil::WideStringToUTF8String(argv_wide[i]));
-
-      LocalFree(argv_wide);
-    }
-  }
-
-  std::vector<char*> argc_pointers;
-  argc_pointers.reserve(argc_strings.size());
-  for (std::string& arg : argc_strings)
-    argc_pointers.push_back(arg.data());
-
-  return main(static_cast<int>(argc_pointers.size()), argc_pointers.data());
-}
-
-#endif

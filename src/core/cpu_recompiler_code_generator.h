@@ -55,7 +55,7 @@ public:
   static const char* GetHostRegName(HostReg reg, RegSize size = HostPointerSize);
   static void AlignCodeBuffer(JitCodeBuffer* code_buffer);
 
-  static void BackpatchLoadStore(void* host_pc, const CodeCache::LoadstoreBackpatchInfo& lbi);
+  static void BackpatchLoadStore(void* host_pc, JitCodeBuffer* code_buffer, const CodeCache::LoadstoreBackpatchInfo& lbi);
 
   const void* CompileBlock(CodeCache::Block* block, u32* out_host_code_size, u32* out_host_far_code_size);
 

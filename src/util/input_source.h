@@ -82,4 +82,7 @@ public:
 #ifdef __ANDROID__
   static std::unique_ptr<InputSource> CreateAndroidSource();
 #endif
+#ifdef __SWITCH__
+  static std::unique_ptr<InputSource> CreateSwitchSource();
+#endif
 };

@@ -104,6 +104,7 @@ HTTPDownloader::Request* HTTPDownloaderCurl::InternalCreateRequest()
 
 void HTTPDownloaderCurl::InternalPollRequests()
 {
+#ifndef __SWITCH__
   // Apparently OpenSSL can fire SIGPIPE...
   sigset_t old_block_mask = {};
   sigset_t new_block_mask = {};
@@ -112,6 +113,7 @@ void HTTPDownloaderCurl::InternalPollRequests()
   sigaddset(&new_block_mask, SIGPIPE);
   if (pthread_sigmask(SIG_BLOCK, &new_block_mask, &old_block_mask) != 0)
     Log_WarningPrint("Failed to block SIGPIPE");
+#endif
 
   int running_handles;
   const CURLMcode err = curl_multi_perform(m_multi_handle, &running_handles);
@@ -143,7 +145,6 @@ void HTTPDownloaderCurl::InternalPollRequests()
       long response_code = 0;
       curl_easy_getinfo(msg->easy_handle, CURLINFO_RESPONSE_CODE, &response_code);
       req->status_code = static_cast<s32>(response_code);
-
       char* content_type = nullptr;
       if (curl_easy_getinfo(req->handle, CURLINFO_CONTENT_TYPE, &content_type) == CURLE_OK && content_type)
         req->content_type = content_type;
@@ -158,8 +159,10 @@ void HTTPDownloaderCurl::InternalPollRequests()
     req->state.store(Request::State::Complete, std::memory_order_release);
   }
 
+#ifndef __SWITCH__
   if (pthread_sigmask(SIG_UNBLOCK, &new_block_mask, &old_block_mask) != 0)
     Log_WarningPrint("Failed to unblock SIGPIPE");
+#endif
 }
 
 bool HTTPDownloaderCurl::StartRequest(HTTPDownloader::Request* request)

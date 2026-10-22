@@ -849,7 +849,7 @@ GameList::PlayedTimeMap GameList::LoadPlayedTimeMap(const std::string& path)
 
   if (fp)
   {
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__SWITCH__)
     FileSystem::POSIXLock flock(fp.get());
 #endif
 
@@ -900,7 +900,7 @@ GameList::PlayedTimeEntry GameList::UpdatePlayedTimeFile(const std::string& path
     return new_entry;
   }
 
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__SWITCH__)
   FileSystem::POSIXLock flock(fp.get());
 #endif
 

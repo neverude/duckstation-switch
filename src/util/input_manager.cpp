@@ -648,6 +648,11 @@ bool InputManager::GetInputSourceDefaultEnabled(InputSourceType type)
       return true;
 #endif
 
+#ifdef __SWITCH__
+    case InputSourceType::Switch:
+      return true;
+#endif
+
     default:
       return false;
   }
@@ -1958,5 +1963,8 @@ void InputManager::ReloadSources(SettingsInterface& si, std::unique_lock<std::mu
 #endif
 #ifdef __ANDROID__
   UpdateInputSourceState(si, settings_lock, InputSourceType::Android, &InputSource::CreateAndroidSource);
+#endif
+#ifdef __SWITCH__
+  UpdateInputSourceState(si, settings_lock, InputSourceType::Switch, &InputSource::CreateSwitchSource);
 #endif
 }

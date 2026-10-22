@@ -355,6 +355,7 @@ bool OpenGLContextEGL::CreateSurface()
   }
 
   // Some implementations may require the size to be queried at runtime.
+  // query surface is currently broken on Switch
   EGLint surface_width, surface_height;
   if (eglQuerySurface(m_display, m_surface, EGL_WIDTH, &surface_width) &&
       eglQuerySurface(m_display, m_surface, EGL_HEIGHT, &surface_height))

@@ -2516,7 +2516,7 @@ void CodeGenerator::EmitUpdateFastmemBase()
   m_emit->mov(GetFastmemBasePtrReg(), m_emit->qword[GetCPUPtrReg() + offsetof(CPU::State, fastmem_base)]);
 }
 
-void CodeGenerator::BackpatchLoadStore(void* host_pc, const CodeCache::LoadstoreBackpatchInfo& lbi)
+void CodeGenerator::BackpatchLoadStore(void* host_pc, JitCodeBuffer* code_buffer, const CodeCache::LoadstoreBackpatchInfo& lbi)
 {
   Log_ProfileFmt("Backpatching {} (guest PC 0x{:08X}) to slowmem", host_pc, lbi.guest_pc);
 
