@@ -4873,8 +4873,8 @@ void System::ToggleWidescreen()
 
 void System::ToggleAspectRatio()
 {
-  static constexpr std::array<DisplayAspectRatio, 3> cycle = {
-    DisplayAspectRatio::R4_3, DisplayAspectRatio::MatchWindow, DisplayAspectRatio::Auto};
+  static constexpr std::array<DisplayAspectRatio, 4> cycle = {
+    DisplayAspectRatio::R4_3, DisplayAspectRatio::MatchWindow, DisplayAspectRatio::Custom, DisplayAspectRatio::Auto};
 
   const auto it = std::find(cycle.begin(), cycle.end(), g_settings.display_aspect_ratio);
   const size_t index = (it == cycle.end()) ? 0 : (static_cast<size_t>(it - cycle.begin()) + 1) % cycle.size();
