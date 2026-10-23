@@ -73,7 +73,7 @@ enum class GPURenderer : u8
 #ifdef ENABLE_OPENGL
   HardwareOpenGL,
 #endif
-#ifdef __SWITCH__
+#ifdef ENABLE_DEKO3D
   HardwareDeko3D,
 #endif
   Software,

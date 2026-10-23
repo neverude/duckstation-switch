@@ -133,8 +133,12 @@ OpenGLContextEGL::OpenGLContextEGL(const WindowInfo& wi) : OpenGLContext(wi)
 
 OpenGLContextEGL::~OpenGLContextEGL()
 {
-  DestroySurface();
-  DestroyContext();
+  // If initialization failed before the EGL functions were loaded, the glad pointers are still null.
+  if (m_display != EGL_NO_DISPLAY)
+  {
+    DestroySurface();
+    DestroyContext();
+  }
   UnloadEGL();
 }
 

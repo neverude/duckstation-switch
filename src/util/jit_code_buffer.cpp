@@ -106,6 +106,7 @@ bool JitCodeBuffer::Allocate(u32 size /* = 64 * 1024 * 1024 */, u32 far_code_siz
       {
           Log_ErrorPrintf("Couldn't find unmapped place for JIT memory\n");
           m_code_ptr = nullptr;
+          virtmemUnlock();
           return false;
       }
   }
@@ -122,6 +123,7 @@ bool JitCodeBuffer::Allocate(u32 size /* = 64 * 1024 * 1024 */, u32 far_code_siz
   if (R_FAILED(r))
   {
     Log_ErrorPrintf("svcMapProcessCodeMemory failed: 0x%08X", r);
+    virtmemUnlock();
     return false;
   }
   r = svcSetProcessMemoryPermission(envGetOwnProcessHandle(),
@@ -129,6 +131,7 @@ bool JitCodeBuffer::Allocate(u32 size /* = 64 * 1024 * 1024 */, u32 far_code_siz
   if (R_FAILED(r))
   {
     Log_ErrorPrintf("svcSetProcessMemoryPermission failed: 0x%08X", r);
+    virtmemUnlock();
     return false;
   }
   r = svcMapProcessMemory(m_rw_ptr,
@@ -138,6 +141,7 @@ bool JitCodeBuffer::Allocate(u32 size /* = 64 * 1024 * 1024 */, u32 far_code_siz
   if (R_FAILED(r))
   {
     Log_ErrorPrintf("svcMapProcessMemory failed: 0x%08X", r);
+    virtmemUnlock();
     return false;
   }
 

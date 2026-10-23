@@ -29,7 +29,10 @@ void Settings::SetDefaultHotkeyConfig(SettingsInterface& si)
 {
   si.ClearSection("Hotkeys");
 
-#ifndef __ANDROID__
+#if defined(__SWITCH__)
+  // No keyboard on Switch. Clicking both sticks opens the pause menu, which also has save states and quit.
+  si.SetStringValue("Hotkeys", "OpenPauseMenu", "P0/LStick & P0/RStick");
+#elif !defined(__ANDROID__)
   si.SetStringValue("Hotkeys", "FastForward", "Keyboard/Tab");
   si.SetStringValue("Hotkeys", "TogglePause", "Keyboard/Space");
   si.SetStringValue("Hotkeys", "Screenshot", "Keyboard/F10");

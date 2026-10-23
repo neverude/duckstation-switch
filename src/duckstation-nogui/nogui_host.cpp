@@ -583,6 +583,10 @@ std::string NoGUIHost::GetAppConfigSuffix()
 void NoGUIHost::StartCPUThread()
 {
   s_running.store(true, std::memory_order_release);
+#ifdef __SWITCH__
+  // All GL work and shader compilation happens on this thread.
+  s_cpu_thread.SetStackSize(8 * 1024 * 1024);
+#endif
   s_cpu_thread.Start(CPUThreadEntryPoint);
 }
 

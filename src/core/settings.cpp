@@ -10,6 +10,7 @@
 #include "util/gpu_device.h"
 #include "util/imgui_manager.h"
 #include "util/input_manager.h"
+#include "util/input_source.h"
 
 #include "common/assert.h"
 #include "common/file_system.h"
@@ -851,7 +852,16 @@ void Settings::SetDefaultControllerConfig(SettingsInterface& si)
     si.SetStringValue(section.c_str(), "Type", Controller::GetDefaultPadType(i));
   }
 
-#ifndef __ANDROID__
+#if defined(__SWITCH__)
+  // There is no keyboard on Switch. The input source does not exist yet when the defaults are created, so ask a
+  // temporary one for the mapping of the first controller.
+  {
+    const std::unique_ptr<InputSource> source = InputSource::CreateSwitchSource();
+    GenericInputBindingMapping mapping;
+    if (source && source->GetGenericBindingMapping("P0", &mapping))
+      InputManager::MapController(si, 0, mapping);
+  }
+#elif !defined(__ANDROID__)
   // Use the automapper to set this up.
   InputManager::MapController(si, 0, InputManager::GetGenericBindingMapping("Keyboard"));
 #endif
@@ -1025,7 +1035,7 @@ static constexpr const std::array s_gpu_renderer_names = {
 #ifdef ENABLE_OPENGL
   "OpenGL",
 #endif
-#ifdef __SWITCH__
+#ifdef ENABLE_DEKO3D
   "deko3D",
 #endif
   "Software",
@@ -1044,7 +1054,7 @@ static constexpr const std::array s_gpu_renderer_display_names = {
 #ifdef ENABLE_OPENGL
   TRANSLATE_NOOP("GPURenderer", "OpenGL"),
 #endif
-#ifdef __SWITCH__
+#ifdef ENABLE_DEKO3D
   TRANSLATE_NOOP("GPURenderer", "Hardware (deko3D)"),
 #endif
   TRANSLATE_NOOP("GPURenderer", "Software"),

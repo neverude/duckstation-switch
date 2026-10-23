@@ -225,6 +225,9 @@ void SwitchNoGUIPlatform::RunMessageLoop()
     if (!appletMainLoop())
       NoGUIHost::StopRunning();
 
+    // Do not spin a whole core, callbacks posted by the CPU thread are not latency critical.
+    svcSleepThread(2'000'000);
+
     std::unique_lock lock(m_callback_queue_mutex);
     while (!m_callback_queue.empty())
     {

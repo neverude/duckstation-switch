@@ -395,13 +395,21 @@ bool Threading::Thread::Start(EntryPoint func)
   pthread_attr_t attrs;
   bool has_attributes = false;
 
-  if (m_stack_size != 0)
+#ifdef __SWITCH__
+  // The default stack of a thread on Switch is only 128 KB, which is far too small for the GL driver and its
+  // shader compiler. Use a bigger one unless the caller asked for something specific.
+  static constexpr u32 SWITCH_DEFAULT_STACK_SIZE = 4 * 1024 * 1024;
+  const u32 stack_size = (m_stack_size != 0) ? m_stack_size : SWITCH_DEFAULT_STACK_SIZE;
+#else
+  const u32 stack_size = m_stack_size;
+#endif
+
+  if (stack_size != 0)
   {
     has_attributes = true;
     pthread_attr_init(&attrs);
+    pthread_attr_setstacksize(&attrs, stack_size);
   }
-  if (m_stack_size != 0)
-    pthread_attr_setstacksize(&attrs, m_stack_size);
 
   pthread_t handle;
   const int res = pthread_create(&handle, has_attributes ? &attrs : nullptr, ThreadProc, func_clone.get());
