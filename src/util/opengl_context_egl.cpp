@@ -339,6 +339,12 @@ bool OpenGLContextEGL::ChangeSurface(const WindowInfo& new_wi)
 
 void OpenGLContextEGL::ResizeSurface(u32 new_surface_width /*= 0*/, u32 new_surface_height /*= 0*/)
 {
+#ifdef __SWITCH__
+  // Do not trust eglQuerySurface() on Switch, only use sizes handed to us.
+  if (new_surface_width == 0 && new_surface_height == 0)
+    return;
+#endif
+
   if (new_surface_width == 0 && new_surface_height == 0)
   {
     EGLint surface_width, surface_height;
@@ -361,7 +367,18 @@ void OpenGLContextEGL::ResizeSurface(u32 new_surface_width /*= 0*/, u32 new_surf
 
 bool OpenGLContextEGL::SwapBuffers()
 {
-  return eglSwapBuffers(m_display, m_surface);
+  const bool result = eglSwapBuffers(m_display, m_surface);
+
+#ifdef __SWITCH__
+  static u32 s_swap_count = 0;
+  if (!result)
+    Log_ErrorFmt("eglSwapBuffers() failed: 0x{:X}", static_cast<unsigned>(eglGetError()));
+  else if (s_swap_count < 5)
+    Log_InfoFmt("eglSwapBuffers() ok (frame {}), surface {}x{}", s_swap_count, m_wi.surface_width, m_wi.surface_height);
+  s_swap_count++;
+#endif
+
+  return result;
 }
 
 bool OpenGLContextEGL::IsCurrent() const
@@ -428,13 +445,18 @@ bool OpenGLContextEGL::CreateSurface()
   }
 
   // Some implementations may require the size to be queried at runtime.
-  // query surface is currently broken on Switch
   EGLint surface_width, surface_height;
   if (eglQuerySurface(m_display, m_surface, EGL_WIDTH, &surface_width) &&
       eglQuerySurface(m_display, m_surface, EGL_HEIGHT, &surface_height))
   {
+#ifdef __SWITCH__
+    // eglQuerySurface() is unreliable with Mesa on Switch, keep the size we gave the native window.
+    Log_InfoFmt("EGL surface reports {}x{}, using {}x{}", surface_width, surface_height, m_wi.surface_width,
+                m_wi.surface_height);
+#else
     m_wi.surface_width = static_cast<u32>(surface_width);
     m_wi.surface_height = static_cast<u32>(surface_height);
+#endif
   }
   else
   {

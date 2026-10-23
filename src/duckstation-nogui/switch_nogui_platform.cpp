@@ -133,6 +133,14 @@ bool SwitchNoGUIPlatform::Initialize()
 {
   appletHook(&m_applet_cookie, ::AppletModeChange, this);
 
+  // Mesa takes the surface size from the native window. CreatePlatformWindow() is never called on Switch (the
+  // window always exists), so this has to happen here, before any EGL surface is created.
+  if (const std::optional<WindowInfo> wi = GetPlatformWindowInfo(); wi.has_value())
+  {
+    Log_InfoFmt("Setting native window size to {}x{}", wi->surface_width, wi->surface_height);
+    nwindowSetDimensions(nwindowGetDefault(), wi->surface_width, wi->surface_height);
+  }
+
   return true;
 }
 

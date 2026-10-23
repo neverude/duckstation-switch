@@ -783,6 +783,16 @@ void OpenGLDevice::EndPresent(bool explicit_present)
   if (m_gpu_timing_enabled)
     PopTimestampQuery();
 
+#ifdef __SWITCH__
+  static u32 s_present_count = 0;
+  if (s_present_count < 5)
+  {
+    Log_InfoFmt("Present {}: window {}x{}, glGetError() = 0x{:X}", s_present_count, m_window_info.surface_width,
+                m_window_info.surface_height, static_cast<unsigned>(glGetError()));
+  }
+  s_present_count++;
+#endif
+
   m_gl_context->SwapBuffers();
 
   if (m_gpu_timing_enabled)
