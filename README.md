@@ -8,31 +8,17 @@ Upstream DuckStation (PC, Android, macOS) is documented in its own [README.md](h
 
 ## 1. Build and copy `duckstation.nro` (one command)
 
-Put the microSD card in your PC and make sure it is mounted. Then, from the root of this repository, run:
+Mount the microSD card, then run this from the root of the repository:
 
 ```bash
 ./scripts/build-switch.sh
 ```
 
-The script does everything:
-
-1. Checks that devkitPro, CMake and Ninja are installed.
-2. Builds `duckstation.nro`.
-3. Finds your microSD card and copies the file to `switch/duckstation/duckstation.nro` on it.
-4. Checks that the copy is identical to the original before it finishes.
-
-If more than one drive is mounted, the script stops and shows the list. Run it again with the card's path:
+This builds `duckstation.nro` and copies it to the card. If more than one drive is mounted, pass the card's path:
 
 ```bash
 ./scripts/build-switch.sh /run/media/$USER/YOUR_SD_CARD
 ```
-
-Other options:
-
-- `./scripts/build-switch.sh --build-only` builds the file but does not touch the card.
-- If devkitPro is not in `/opt/devkitpro`, set `DEVKITPRO` first: `DEVKITPRO=/path/to/devkitpro ./scripts/build-switch.sh`
-
-The build is kept in `~/.cache/duckstation-switch-build`.
 
 Then eject the card safely and continue with step 2.
 
