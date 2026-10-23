@@ -232,7 +232,7 @@ void NoGUIHost::SetDataDirectory()
 #ifdef __SWITCH__
 // Settings files created before the Switch defaults existed only contain keyboard bindings, which do nothing on
 // Switch. Bring them up to date, without touching anything that was set up for the Switch controller.
-static constexpr u32 SWITCH_DEFAULTS_VERSION = 4;
+static constexpr u32 SWITCH_DEFAULTS_VERSION = 5;
 
 static bool ApplySwitchSettingsDefaults(SettingsInterface& si)
 {
@@ -283,11 +283,9 @@ static bool ApplySwitchSettingsDefaults(SettingsInterface& si)
     si.SetStringValue("Hotkeys", "LoadSelectedSaveState", "P0/ZL & P0/Y");
     si.SetStringValue("Hotkeys", "ToggleAspectRatio", "P0/ZR & P0/X");
 
-    // 4:3 instead of stretching to the whole screen, which squashed the picture.
-    si.SetStringValue("Display", "AspectRatio", Settings::GetDisplayAspectRatioName(DisplayAspectRatio::R4_3));
-
-    // Full picture, without the overscan lines that left black bars above and below.
-    si.SetStringValue("Display", "CropMode", Settings::GetDisplayCropModeName(DisplayCropMode::None));
+    // Stretch to the whole screen, with all borders cropped.
+    si.SetStringValue("Display", "AspectRatio", Settings::GetDisplayAspectRatioName(DisplayAspectRatio::MatchWindow));
+    si.SetStringValue("Display", "CropMode", Settings::GetDisplayCropModeName(DisplayCropMode::Borders));
 
     si.SetUIntValue("Switch", "DefaultsVersion", SWITCH_DEFAULTS_VERSION);
     changed = true;

@@ -495,15 +495,14 @@ struct Settings
 
   static constexpr DisplayDeinterlacingMode DEFAULT_DISPLAY_DEINTERLACING_MODE = DisplayDeinterlacingMode::Adaptive;
 #ifdef __SWITCH__
-  // Overscan removes the top and bottom lines of the PS1 picture, which left black bars above and below it.
-  static constexpr DisplayCropMode DEFAULT_DISPLAY_CROP_MODE = DisplayCropMode::None;
+  // Crop all borders, so no black edges remain around the picture.
+  static constexpr DisplayCropMode DEFAULT_DISPLAY_CROP_MODE = DisplayCropMode::Borders;
 #else
   static constexpr DisplayCropMode DEFAULT_DISPLAY_CROP_MODE = DisplayCropMode::Overscan;
 #endif
 #ifdef __SWITCH__
-  // 4:3 is the native shape of the PS1 output, and the Switch screen is 16:9, so the image gets pillarboxed instead
-  // of being stretched. Can be changed with the aspect ratio hotkey.
-  static constexpr DisplayAspectRatio DEFAULT_DISPLAY_ASPECT_RATIO = DisplayAspectRatio::R4_3;
+  // Stretch to the whole screen, this is what looks best on the Switch display.
+  static constexpr DisplayAspectRatio DEFAULT_DISPLAY_ASPECT_RATIO = DisplayAspectRatio::MatchWindow;
 #else
   static constexpr DisplayAspectRatio DEFAULT_DISPLAY_ASPECT_RATIO = DisplayAspectRatio::Auto;
 #endif
