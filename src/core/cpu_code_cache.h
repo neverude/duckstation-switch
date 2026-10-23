@@ -14,6 +14,10 @@ bool IsUsingAnyRecompiler();
 /// Returns true if any recompiler and fastmem is in use.
 bool IsUsingFastmem();
 
+/// Returns the number of fastmem page faults handled since the last call, for performance diagnostics.
+/// ram_writes are writes to protected RAM pages, backpatches are loads/stores converted to the slow path.
+void GetAndResetFaultCounts(u32* ram_writes, u32* backpatches);
+
 /// Allocates resources, call once at startup.
 bool ProcessStartup();
 

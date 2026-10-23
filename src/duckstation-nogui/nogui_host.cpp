@@ -229,6 +229,94 @@ void NoGUIHost::SetDataDirectory()
     EmuFolders::DataRoot = EmuFolders::AppRoot;
 }
 
+#ifdef __SWITCH__
+// Settings files created before the Switch defaults existed only contain keyboard bindings, which do nothing on
+// Switch. Bring them up to date, without touching anything that was set up for the Switch controller.
+static bool ApplySwitchSettingsDefaults(SettingsInterface& si)
+{
+  bool changed = false;
+
+  const std::string pad_up = si.GetStringValue("Pad1", "Up", "");
+  const std::string pad_cross = si.GetStringValue("Pad1", "Cross", "");
+  if (!pad_up.starts_with("P0/") && !pad_cross.starts_with("P0/"))
+  {
+    Log_InfoPrint("Pad 1 has no Switch bindings, applying the Switch defaults.");
+    Settings::SetDefaultControllerConfig(si);
+    changed = true;
+  }
+
+  const std::string pause_menu = si.GetStringValue("Hotkeys", "OpenPauseMenu", "");
+  if (pause_menu.empty() || pause_menu.starts_with("Keyboard/") || pause_menu == "P0/LStick & P0/RStick")
+  {
+    si.SetStringValue("Hotkeys", "OpenPauseMenu", "P0/ZL & P0/ZR");
+    changed = true;
+  }
+
+  // Keyboard hotkeys can never trigger and only produce error messages.
+  for (const auto& [key, value] : si.GetKeyValueList("Hotkeys"))
+  {
+    if (value.starts_with("Keyboard/"))
+    {
+      si.DeleteValue("Hotkeys", key.c_str());
+      changed = true;
+    }
+  }
+
+  if (!si.ContainsValue("Switch", "BoostClocks"))
+  {
+    si.SetBoolValue("Switch", "BoostClocks", true);
+    si.SetUIntValue("Switch", "CPUClockMHz", 1785);
+    si.SetUIntValue("Switch", "GPUClockMHz", 768);
+    changed = true;
+  }
+
+  return changed;
+}
+
+static void SetSwitchClockRate(PcvModuleId module, u32 hz, const char* name)
+{
+  ClkrstSession session;
+  Result rc = clkrstOpenSession(&session, module, 3);
+  if (R_FAILED(rc))
+  {
+    Log_ErrorFmt("clkrstOpenSession({}) failed: 0x{:X}", name, rc);
+    return;
+  }
+
+  rc = clkrstSetClockRate(&session, hz);
+  u32 current_hz = 0;
+  clkrstGetClockRate(&session, &current_hz);
+  clkrstCloseSession(&session);
+
+  if (R_FAILED(rc))
+    Log_ErrorFmt("Setting the {} clock to {} Hz failed: 0x{:X}", name, hz, rc);
+  else
+    Log_InfoFmt("{} clock set to {} MHz (now {} MHz)", name, hz / 1000000, current_hz / 1000000);
+}
+
+// Applications run at the stock clocks (CPU 1020 MHz), which is too slow for comfortable emulation.
+static bool s_switch_clkrst_initialized = false;
+static void ApplySwitchClockSettings(const SettingsInterface& si)
+{
+  if (!si.GetBoolValue("Switch", "BoostClocks", true))
+  {
+    Log_InfoPrint("Clock boost disabled in settings.ini ([Switch] BoostClocks).");
+    return;
+  }
+
+  const Result rc = clkrstInitialize();
+  if (R_FAILED(rc))
+  {
+    Log_ErrorFmt("clkrstInitialize() failed: 0x{:X}, cannot change the clock speeds.", rc);
+    return;
+  }
+  s_switch_clkrst_initialized = true;
+
+  SetSwitchClockRate(PcvModuleId_CpuBus, si.GetUIntValue("Switch", "CPUClockMHz", 1785) * 1000000u, "CPU");
+  SetSwitchClockRate(PcvModuleId_GPU, si.GetUIntValue("Switch", "GPUClockMHz", 768) * 1000000u, "GPU");
+}
+#endif
+
 bool NoGUIHost::InitializeConfig(std::string settings_filename)
 {
   if (!SetCriticalFolders())
@@ -257,6 +345,11 @@ bool NoGUIHost::InitializeConfig(std::string settings_filename)
     SetDefaultSettings(*s_base_settings_interface, true, true);
     s_base_settings_interface->Save();
   }
+
+#ifdef __SWITCH__
+  if (ApplySwitchSettingsDefaults(*s_base_settings_interface))
+    s_base_settings_interface->Save();
+#endif
 
   EmuFolders::LoadConfig(*s_base_settings_interface.get());
   EmuFolders::EnsureFoldersExist();
@@ -1441,6 +1534,10 @@ int main(int argc, char* argv[])
   if (!NoGUIHost::ParseCommandLineParametersAndInitializeConfig(argc, argv, autoboot))
     return EXIT_FAILURE;
 
+#ifdef __SWITCH__
+  ApplySwitchClockSettings(*NoGUIHost::s_base_settings_interface);
+#endif
+
   // the rest of initialization happens on the CPU thread.
   NoGUIHost::HookSignals();
   NoGUIHost::StartCPUThread();
@@ -1458,5 +1555,11 @@ int main(int argc, char* argv[])
 
   NoGUIHost::s_base_settings_interface.reset();
   g_nogui_window.reset();
+
+#ifdef __SWITCH__
+  if (s_switch_clkrst_initialized)
+    clkrstExit();
+#endif
+
   return EXIT_SUCCESS;
 }

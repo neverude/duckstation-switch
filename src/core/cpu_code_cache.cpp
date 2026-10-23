@@ -165,6 +165,15 @@ bool CPU::CodeCache::IsUsingFastmem()
   return IsUsingAnyRecompiler() && g_settings.cpu_fastmem_mode != CPUFastmemMode::Disabled;
 }
 
+static u32 s_fault_count_ram_writes = 0;
+static u32 s_fault_count_backpatches = 0;
+
+void CPU::CodeCache::GetAndResetFaultCounts(u32* ram_writes, u32* backpatches)
+{
+  *ram_writes = std::exchange(s_fault_count_ram_writes, 0);
+  *backpatches = std::exchange(s_fault_count_backpatches, 0);
+}
+
 bool CPU::CodeCache::ProcessStartup()
 {
   AllocateLUTs();
@@ -1617,6 +1626,7 @@ Common::PageFaultHandler::HandlerResult CPU::CodeCache::HandleFastmemException(v
     // TODO: path for manual protection to return back to read-only pages
     if (is_write && !g_state.cop0_regs.sr.Isc && AddressInRAM(guest_address))
     {
+      s_fault_count_ram_writes++;
       Log_DevFmt("Ignoring fault due to RAM write @ 0x{:08X}", guest_address);
       InvalidateBlocksWithPageIndex(Bus::GetRAMCodePageIndex(guest_address));
       return Common::PageFaultHandler::HandlerResult::ContinueExecution;
@@ -1638,6 +1648,8 @@ Common::PageFaultHandler::HandlerResult CPU::CodeCache::HandleFastmemException(v
     Log_ErrorFmt("No backpatch info found for {}", exception_pc);
     return Common::PageFaultHandler::HandlerResult::ExecuteNextHandler;
   }
+
+  s_fault_count_backpatches++;
 
   LoadstoreBackpatchInfo& info = iter->second;
   Log_DevFmt("Backpatching {} at {}[{}] (pc {:08X} addr {:08X}): Bitmask {:08X} Addr {} Data {} Size {} Signed {:02X}",

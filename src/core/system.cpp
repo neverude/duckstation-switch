@@ -2665,6 +2665,15 @@ void System::UpdatePerformanceCounters()
   Log_VerbosePrintf("FPS: %.2f VPS: %.2f CPU: %.2f GPU: %.2f Average: %.2fms Min: %.2fms Max: %.2f ms", s_fps, s_vps,
                     s_cpu_thread_usage, s_gpu_usage, s_average_frame_time, s_minimum_frame_time, s_maximum_frame_time);
 
+#ifdef __SWITCH__
+  // Performance numbers in the SD card log, to find out why emulation is slow.
+  u32 fault_ram_writes = 0, fault_backpatches = 0;
+  CPU::CodeCache::GetAndResetFaultCounts(&fault_ram_writes, &fault_backpatches);
+  Log_InfoFmt("Perf: speed {:.1f}% vps {:.1f} fps {:.1f} frame avg {:.2f}ms max {:.2f}ms | page faults: {} ram writes, "
+              "{} backpatches",
+              s_speed, s_vps, s_fps, s_average_frame_time, s_maximum_frame_time, fault_ram_writes, fault_backpatches);
+#endif
+
   Host::OnPerformanceCountersUpdated();
 }
 
