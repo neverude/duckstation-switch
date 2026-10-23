@@ -1,6 +1,7 @@
 #include "switch_input_source.h"
 #include "common/string_util.h"
 #include "core/host.h"
+#include "util/imgui_manager.h"
 
 #include "common/bitutils.h"
 
@@ -95,6 +96,28 @@ void SwitchInputSource::PollEvents()
 
 void SwitchInputSource::UpdateState(u32 controller)
 {
+  // The left stick navigates the menus like the D-pad. Only the menus get these events, the game still sees the
+  // stick as an analog axis.
+  {
+    static constexpr float NAV_THRESHOLD = 0.5f;
+    ControllerData& data = m_controllers[controller];
+    const HidAnalogStickState left = padGetStickPos(&data.pad_state, 0);
+    const float x = static_cast<float>(left.x) / JOYSTICK_MAX;
+    const float y = static_cast<float>(left.y) / JOYSTICK_MAX; // positive is up
+
+    const bool pressed[4] = {y > NAV_THRESHOLD, y < -NAV_THRESHOLD, x < -NAV_THRESHOLD, x > NAV_THRESHOLD};
+    static constexpr GenericInputBinding dpad[4] = {GenericInputBinding::DPadUp, GenericInputBinding::DPadDown,
+                                                    GenericInputBinding::DPadLeft, GenericInputBinding::DPadRight};
+    for (u32 i = 0; i < 4; i++)
+    {
+      if (pressed[i] != data.nav_pressed[i])
+      {
+        data.nav_pressed[i] = pressed[i];
+        ImGuiManager::ProcessGenericInputEvent(dpad[i], pressed[i] ? 1.0f : 0.0f);
+      }
+    }
+  }
+
   for (u32 i = 0; i < 2; i++)
   {
     HidAnalogStickState state = padGetStickPos(&m_controllers[controller].pad_state, i);

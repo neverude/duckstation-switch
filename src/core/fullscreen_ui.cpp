@@ -497,6 +497,9 @@ static bool s_save_state_selector_resuming = false;
 // Game List
 //////////////////////////////////////////////////////////////////////////
 static void DrawGameListWindow();
+#ifdef __SWITCH__
+static void DrawSwitchFirstStartHints(const ImVec2& heading_size);
+#endif
 static void DrawGameList(const ImVec2& heading_size);
 static void DrawGameGrid(const ImVec2& heading_size);
 static void HandleGameListActivate(const GameList::Entry* entry);
@@ -6123,6 +6126,45 @@ void FullscreenUI::PopulateGameListEntryList()
             });
 }
 
+#ifdef __SWITCH__
+// Shown while no games are listed. Explains what is needed and where to put it.
+void FullscreenUI::DrawSwitchFirstStartHints(const ImVec2& heading_size)
+{
+  ImGuiIO& io = ImGui::GetIO();
+  const ImVec2 size(io.DisplaySize.x, io.DisplaySize.y - heading_size.y);
+
+  if (!BeginFullscreenWindow(ImVec2(0.0f, heading_size.y), size, "switch_hints", UIBackgroundColor))
+  {
+    EndFullscreenWindow();
+    return;
+  }
+
+  ImGui::PushFont(g_large_font);
+  ImGui::TextUnformatted(FSUI_CSTR("Getting started"));
+  ImGui::PopFont();
+  ImGui::Spacing();
+
+  ImGui::TextWrapped("%s", FSUI_CSTR(
+    "1. BIOS: DuckStation needs a PlayStation BIOS file (512 KB, e.g. scph5502.bin for PAL games). It can only "
+    "come from a PlayStation console you own, DuckStation does not include one.\n"
+    "    Copy it to:  sdmc:/switch/duckstation/bios/\n"
+    "    Then select it under Settings > BIOS Settings."));
+  ImGui::Spacing();
+
+  ImGui::TextWrapped("%s", FSUI_CSTR(
+    "2. Games: copy your game images (.bin + .cue, .chd, .iso or .pbp) to a folder on the SD card, for example\n"
+    "    sdmc:/switch/duckstation/games/\n"
+    "    Then add that folder under Settings > Game List > Add Search Directory."));
+  ImGui::Spacing();
+
+  ImGui::TextWrapped("%s", FSUI_CSTR(
+    "Legal: only play copies of games you own, for example backups of discs you bought yourself. Downloading or "
+    "sharing games you do not own is illegal in most countries."));
+
+  EndFullscreenWindow();
+}
+#endif
+
 void FullscreenUI::DrawGameListWindow()
 {
   auto game_list_lock = GameList::GetLock();
@@ -6173,6 +6215,11 @@ void FullscreenUI::DrawGameListWindow()
     QueueResetFocus();
   }
 
+#ifdef __SWITCH__
+  if (s_game_list_sorted_entries.empty())
+    DrawSwitchFirstStartHints(heading_size);
+  else
+#endif
   switch (s_game_list_view)
   {
     case GameListView::Grid:

@@ -46,6 +46,7 @@ private:
     PadState pad_state;
     bool connected = false;
     u64 buttons = 0;
+    bool nav_pressed[4] = {}; // up, down, left, right: last state sent to the menus
   };
 
   using ControllerDataArray = std::array<ControllerData, NUM_CONTROLLERS>;
