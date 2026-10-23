@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2019-2024 Connor McLaughlin <stenzek@gmail.com>
 // SPDX-License-Identifier: (GPL-3.0 OR CC-BY-NC-ND-4.0)
 
-#include "nogui_host.h"
-#include "nogui_platform.h"
+#include "frontend_host.h"
+#include "frontend_platform.h"
 
 #include "scmversion/scmversion.h"
 
@@ -47,18 +47,18 @@
 #include <switch.h>
 #endif
 
-Log_SetChannel(NoGUIHost);
+Log_SetChannel(FrontendHost);
 
 static constexpr u32 SETTINGS_VERSION = 3;
 static constexpr auto CPU_THREAD_POLL_INTERVAL =
   std::chrono::milliseconds(8); // how often we'll poll controllers when paused
 
-std::unique_ptr<NoGUIPlatform> g_nogui_window;
+std::unique_ptr<FrontendPlatform> g_frontend_window;
 
 //////////////////////////////////////////////////////////////////////////
 // Local function declarations
 //////////////////////////////////////////////////////////////////////////
-namespace NoGUIHost {
+namespace FrontendHost {
 
 namespace {
 class AsyncOpProgressCallback final : public BaseProgressCallback
@@ -119,7 +119,7 @@ static void StopCPUThread();
 static void ProcessCPUThreadEvents(bool block);
 static void CPUThreadEntryPoint();
 static void CPUThreadMainLoop();
-static std::unique_ptr<NoGUIPlatform> CreatePlatform();
+static std::unique_ptr<FrontendPlatform> CreatePlatform();
 static std::string GetWindowTitle(const std::string& game_title);
 static void UpdateWindowTitle(const std::string& game_title);
 static void CancelAsyncOp();
@@ -146,7 +146,7 @@ static u32 s_blocking_cpu_events_pending = 0; // TODO: Token system would work b
 static std::mutex s_async_op_mutex;
 static std::thread s_async_op_thread;
 static AsyncOpProgressCallback* s_async_op_progress = nullptr;
-} // namespace NoGUIHost
+} // namespace FrontendHost
 
 #ifdef __SWITCH__
 std::string switch_program_path;
@@ -156,7 +156,7 @@ std::string switch_program_path;
 // Initialization/Shutdown
 //////////////////////////////////////////////////////////////////////////
 
-bool NoGUIHost::SetCriticalFolders()
+bool FrontendHost::SetCriticalFolders()
 {
   SetAppRoot();
   SetResourcesDirectory();
@@ -173,21 +173,21 @@ bool NoGUIHost::SetCriticalFolders()
   // the resources directory should exist, bail out if not
   if (!FileSystem::DirectoryExists(EmuFolders::Resources.c_str()))
   {
-    g_nogui_window->ReportError("Error", "Resources directory is missing, your installation is incomplete.");
+    g_frontend_window->ReportError("Error", "Resources directory is missing, your installation is incomplete.");
     return false;
   }
 
   return true;
 }
 
-bool NoGUIHost::ShouldUsePortableMode()
+bool FrontendHost::ShouldUsePortableMode()
 {
   // Check whether portable.ini exists in the program directory.
   return (FileSystem::FileExists(Path::Combine(EmuFolders::AppRoot, "portable.txt").c_str()) ||
           FileSystem::FileExists(Path::Combine(EmuFolders::AppRoot, "settings.ini").c_str()));
 }
 
-void NoGUIHost::SetAppRoot()
+void FrontendHost::SetAppRoot()
 {
   const std::string program_path = FileSystem::GetProgramPath();
   Log_InfoPrintf("Program Path: %s", program_path.c_str());
@@ -195,7 +195,7 @@ void NoGUIHost::SetAppRoot()
   EmuFolders::AppRoot = Path::Canonicalize(Path::GetDirectory(program_path));
 }
 
-void NoGUIHost::SetResourcesDirectory()
+void FrontendHost::SetResourcesDirectory()
 {
 #ifdef NDEBUG
   EmuFolders::Resources = "romfs:/resources";
@@ -204,7 +204,7 @@ void NoGUIHost::SetResourcesDirectory()
 #endif
 }
 
-void NoGUIHost::SetDataDirectory()
+void FrontendHost::SetDataDirectory()
 {
   // Already set, e.g. by -portable.
   if (!EmuFolders::DataRoot.empty())
@@ -342,7 +342,7 @@ static void ApplySwitchClockSettings(const SettingsInterface& si)
 }
 #endif
 
-bool NoGUIHost::InitializeConfig(std::string settings_filename)
+bool FrontendHost::InitializeConfig(std::string settings_filename)
 {
   if (!SetCriticalFolders())
     return false;
@@ -389,7 +389,7 @@ bool NoGUIHost::InitializeConfig(std::string settings_filename)
   return true;
 }
 
-void NoGUIHost::SetDefaultSettings(SettingsInterface& si, bool system, bool controller)
+void FrontendHost::SetDefaultSettings(SettingsInterface& si, bool system, bool controller)
 {
   if (system)
   {
@@ -405,7 +405,7 @@ void NoGUIHost::SetDefaultSettings(SettingsInterface& si, bool system, bool cont
     Settings::SetDefaultHotkeyConfig(si);
   }
 
-  g_nogui_window->SetDefaultConfig(si);
+  g_frontend_window->SetDefaultConfig(si);
 }
 
 void Host::ReportFatalError(const std::string_view& title, const std::string_view& message)
@@ -426,7 +426,7 @@ void Host::ReportErrorAsync(const std::string_view& title, const std::string_vie
     Log_ErrorPrintf("ReportErrorAsync: %.*s", static_cast<int>(message.size()), message.data());
   }
 
-  g_nogui_window->ReportError(title, message);
+  g_frontend_window->ReportError(title, message);
 }
 
 bool Host::ConfirmMessage(const std::string_view& title, const std::string_view& message)
@@ -441,7 +441,7 @@ bool Host::ConfirmMessage(const std::string_view& title, const std::string_view&
     Log_ErrorPrintf("ConfirmMessage: %.*s", static_cast<int>(message.size()), message.data());
   }
 
-  return g_nogui_window->ConfirmMessage(title, message);
+  return g_frontend_window->ConfirmMessage(title, message);
 }
 
 void Host::ReportDebuggerMessage(const std::string_view& message)
@@ -487,7 +487,7 @@ s32 Host::Internal::GetTranslatedStringImpl(const std::string_view& context, con
   return static_cast<s32>(msg.size());
 }
 
-ALWAYS_INLINE std::string NoGUIHost::GetResourcePath(std::string_view filename, bool allow_override)
+ALWAYS_INLINE std::string FrontendHost::GetResourcePath(std::string_view filename, bool allow_override)
 {
   return allow_override ? EmuFolders::GetOverridableResourcePath(filename) :
                           Path::Combine(EmuFolders::Resources, filename);
@@ -495,13 +495,13 @@ ALWAYS_INLINE std::string NoGUIHost::GetResourcePath(std::string_view filename, 
 
 bool Host::ResourceFileExists(std::string_view filename, bool allow_override)
 {
-  const std::string path = NoGUIHost::GetResourcePath(filename, allow_override);
+  const std::string path = FrontendHost::GetResourcePath(filename, allow_override);
   return FileSystem::FileExists(path.c_str());
 }
 
 std::optional<std::vector<u8>> Host::ReadResourceFile(std::string_view filename, bool allow_override)
 {
-  const std::string path = NoGUIHost::GetResourcePath(filename, allow_override);
+  const std::string path = FrontendHost::GetResourcePath(filename, allow_override);
   std::optional<std::vector<u8>> ret(FileSystem::ReadBinaryFile(path.c_str()));
   if (!ret.has_value())
     Log_ErrorFmt("Failed to read resource file '{}'", filename);
@@ -510,7 +510,7 @@ std::optional<std::vector<u8>> Host::ReadResourceFile(std::string_view filename,
 
 std::optional<std::string> Host::ReadResourceFileToString(std::string_view filename, bool allow_override)
 {
-  const std::string path = NoGUIHost::GetResourcePath(filename, allow_override);
+  const std::string path = FrontendHost::GetResourcePath(filename, allow_override);
   std::optional<std::string> ret(FileSystem::ReadFileToString(path.c_str()));
   if (!ret.has_value())
     Log_ErrorFmt("Failed to read resource file to string '{}'", filename);
@@ -519,7 +519,7 @@ std::optional<std::string> Host::ReadResourceFileToString(std::string_view filen
 
 std::optional<std::time_t> Host::GetResourceFileTimestamp(std::string_view filename, bool allow_override)
 {
-  const std::string path = NoGUIHost::GetResourcePath(filename, allow_override);
+  const std::string path = FrontendHost::GetResourcePath(filename, allow_override);
   FILESYSTEM_STAT_DATA sd;
   if (!FileSystem::StatFile(path.c_str(), &sd))
   {
@@ -540,39 +540,39 @@ void Host::CheckForSettingsChanges(const Settings& old_settings)
 
 void Host::CommitBaseSettingChanges()
 {
-  NoGUIHost::SaveSettings();
+  FrontendHost::SaveSettings();
 }
 
 void Host::RequestExitApplication(bool allow_confirm)
 {
-  NoGUIHost::StopRunning();
+  FrontendHost::StopRunning();
 }
 
 void Host::RequestExitBigPicture()
 {
-  NoGUIHost::StopRunning();
+  FrontendHost::StopRunning();
 }
 
-void NoGUIHost::SaveSettings()
+void FrontendHost::SaveSettings()
 {
   auto lock = Host::GetSettingsLock();
   if (!s_base_settings_interface->Save())
     Log_ErrorPrintf("Failed to save settings.");
 }
 
-bool NoGUIHost::InBatchMode()
+bool FrontendHost::InBatchMode()
 {
   return s_batch_mode;
 }
 
-void NoGUIHost::SetBatchMode(bool enabled)
+void FrontendHost::SetBatchMode(bool enabled)
 {
   s_batch_mode = enabled;
   if (enabled)
     GameList::Refresh(false, true);
 }
 
-void NoGUIHost::StartSystem(SystemBootParameters params)
+void FrontendHost::StartSystem(SystemBootParameters params)
 {
   Host::RunOnCPUThread([params = std::move(params)]() {
     Error error;
@@ -584,7 +584,7 @@ void NoGUIHost::StartSystem(SystemBootParameters params)
   });
 }
 
-void NoGUIHost::ProcessPlatformWindowResize(s32 width, s32 height, float scale)
+void FrontendHost::ProcessPlatformWindowResize(s32 width, s32 height, float scale)
 {
   Host::RunOnCPUThread([width, height, scale]() {
     g_gpu_device->ResizeWindow(width, height, scale);
@@ -593,13 +593,13 @@ void NoGUIHost::ProcessPlatformWindowResize(s32 width, s32 height, float scale)
   });
 }
 
-void NoGUIHost::ProcessPlatformMouseMoveEvent(float x, float y)
+void FrontendHost::ProcessPlatformMouseMoveEvent(float x, float y)
 {
   InputManager::UpdatePointerAbsolutePosition(0, x, y);
   ImGuiManager::UpdateMousePosition(x, y);
 }
 
-void NoGUIHost::ProcessPlatformMouseButtonEvent(s32 button, bool pressed)
+void FrontendHost::ProcessPlatformMouseButtonEvent(s32 button, bool pressed)
 {
   Host::RunOnCPUThread([button, pressed]() {
     InputManager::InvokeEvents(InputManager::MakePointerButtonKey(0, button), pressed ? 1.0f : 0.0f,
@@ -607,7 +607,7 @@ void NoGUIHost::ProcessPlatformMouseButtonEvent(s32 button, bool pressed)
   });
 }
 
-void NoGUIHost::ProcessPlatformMouseWheelEvent(float x, float y)
+void FrontendHost::ProcessPlatformMouseWheelEvent(float x, float y)
 {
   if (x != 0.0f)
     InputManager::UpdatePointerRelativeDelta(0, InputPointerAxis::WheelX, x);
@@ -615,7 +615,7 @@ void NoGUIHost::ProcessPlatformMouseWheelEvent(float x, float y)
     InputManager::UpdatePointerRelativeDelta(0, InputPointerAxis::WheelY, y);
 }
 
-void NoGUIHost::ProcessPlatformKeyEvent(s32 key, bool pressed)
+void FrontendHost::ProcessPlatformKeyEvent(s32 key, bool pressed)
 {
   Host::RunOnCPUThread([key, pressed]() {
     InputManager::InvokeEvents(InputManager::MakeHostKeyboardKey(key), pressed ? 1.0f : 0.0f,
@@ -623,7 +623,7 @@ void NoGUIHost::ProcessPlatformKeyEvent(s32 key, bool pressed)
   });
 }
 
-void NoGUIHost::ProcessPlatformTextEvent(const char* text)
+void FrontendHost::ProcessPlatformTextEvent(const char* text)
 {
   if (!ImGuiManager::WantsTextInput())
     return;
@@ -631,7 +631,7 @@ void NoGUIHost::ProcessPlatformTextEvent(const char* text)
   Host::RunOnCPUThread([text = std::string(text)]() { ImGuiManager::AddTextInput(std::move(text)); });
 }
 
-void NoGUIHost::PlatformWindowFocusGained()
+void FrontendHost::PlatformWindowFocusGained()
 {
   Host::RunOnCPUThread([]() {
     if (!System::IsValid() || !s_was_paused_by_focus_loss)
@@ -642,7 +642,7 @@ void NoGUIHost::PlatformWindowFocusGained()
   });
 }
 
-void NoGUIHost::PlatformWindowFocusLost()
+void FrontendHost::PlatformWindowFocusLost()
 {
   Host::RunOnCPUThread([]() {
     if (!System::IsRunning() || !g_settings.pause_on_focus_loss)
@@ -653,12 +653,12 @@ void NoGUIHost::PlatformWindowFocusLost()
   });
 }
 
-void NoGUIHost::PlatformDevicesChanged()
+void FrontendHost::PlatformDevicesChanged()
 {
   Host::RunOnCPUThread([]() { InputManager::ReloadDevices(); });
 }
 
-bool NoGUIHost::GetSavedPlatformWindowGeometry(s32* x, s32* y, s32* width, s32* height)
+bool FrontendHost::GetSavedPlatformWindowGeometry(s32* x, s32* y, s32* width, s32* height)
 {
   auto lock = Host::GetSettingsLock();
 
@@ -669,7 +669,7 @@ bool NoGUIHost::GetSavedPlatformWindowGeometry(s32* x, s32* y, s32* width, s32* 
   return result;
 }
 
-void NoGUIHost::SavePlatformWindowGeometry(s32 x, s32 y, s32 width, s32 height)
+void FrontendHost::SavePlatformWindowGeometry(s32 x, s32 y, s32 width, s32 height)
 {
   if (s_is_fullscreen)
     return;
@@ -682,12 +682,12 @@ void NoGUIHost::SavePlatformWindowGeometry(s32 x, s32 y, s32 width, s32 height)
   s_base_settings_interface->Save();
 }
 
-std::string NoGUIHost::GetAppNameAndVersion()
+std::string FrontendHost::GetAppNameAndVersion()
 {
   return fmt::format("DuckStation {}", g_scm_tag_str);
 }
 
-std::string NoGUIHost::GetAppConfigSuffix()
+std::string FrontendHost::GetAppConfigSuffix()
 {
 #if defined(_DEBUGFAST)
   return " [DebugFast]";
@@ -698,7 +698,7 @@ std::string NoGUIHost::GetAppConfigSuffix()
 #endif
 }
 
-void NoGUIHost::StartCPUThread()
+void FrontendHost::StartCPUThread()
 {
   s_running.store(true, std::memory_order_release);
 #ifdef __SWITCH__
@@ -708,7 +708,7 @@ void NoGUIHost::StartCPUThread()
   s_cpu_thread.Start(CPUThreadEntryPoint);
 }
 
-void NoGUIHost::StopCPUThread()
+void FrontendHost::StopCPUThread()
 {
   if (!s_cpu_thread.Joinable())
     return;
@@ -721,7 +721,7 @@ void NoGUIHost::StopCPUThread()
   s_cpu_thread.Join();
 }
 
-void NoGUIHost::ProcessCPUThreadEvents(bool block)
+void FrontendHost::ProcessCPUThreadEvents(bool block)
 {
   std::unique_lock lock(s_cpu_thread_events_mutex);
 
@@ -757,7 +757,7 @@ void NoGUIHost::ProcessCPUThreadEvents(bool block)
   }
 }
 
-void NoGUIHost::CPUThreadEntryPoint()
+void FrontendHost::CPUThreadEntryPoint()
 {
   Threading::SetNameOfCurrentThread("CPU Thread");
 
@@ -772,7 +772,7 @@ void NoGUIHost::CPUThreadEntryPoint()
   // input source setup must happen on emu thread
   if (!System::Internal::ProcessStartup())
   {
-    g_nogui_window->QuitMessageLoop();
+    g_frontend_window->QuitMessageLoop();
     return;
   }
 
@@ -793,7 +793,7 @@ void NoGUIHost::CPUThreadEntryPoint()
   }
   else
   {
-    g_nogui_window->ReportError("Error", "Failed to open host display.");
+    g_frontend_window->ReportError("Error", "Failed to open host display.");
   }
 
   // finish any events off (e.g. shutdown system with save)
@@ -805,10 +805,10 @@ void NoGUIHost::CPUThreadEntryPoint()
   Host::ReleaseRenderWindow();
 
   System::Internal::ProcessShutdown();
-  g_nogui_window->QuitMessageLoop();
+  g_frontend_window->QuitMessageLoop();
 }
 
-void NoGUIHost::CPUThreadMainLoop()
+void FrontendHost::CPUThreadMainLoop()
 {
   while (s_running.load(std::memory_order_acquire))
   {
@@ -830,25 +830,25 @@ std::optional<WindowInfo> Host::AcquireRenderWindow(bool recreate_window)
 {
   std::optional<WindowInfo> wi;
 
-  g_nogui_window->ExecuteInMessageLoop([&wi, recreate_window]() {
-    bool res = g_nogui_window->HasPlatformWindow();
+  g_frontend_window->ExecuteInMessageLoop([&wi, recreate_window]() {
+    bool res = g_frontend_window->HasPlatformWindow();
     if (!res || recreate_window)
     {
       if (res)
-        g_nogui_window->DestroyPlatformWindow();
+        g_frontend_window->DestroyPlatformWindow();
 
-      res = g_nogui_window->CreatePlatformWindow(NoGUIHost::GetWindowTitle(System::GetGameTitle()));
+      res = g_frontend_window->CreatePlatformWindow(FrontendHost::GetWindowTitle(System::GetGameTitle()));
     }
     if (res)
-      wi = g_nogui_window->GetPlatformWindowInfo();
-    NoGUIHost::s_platform_window_updated.Post();
+      wi = g_frontend_window->GetPlatformWindowInfo();
+    FrontendHost::s_platform_window_updated.Post();
   });
 
-  NoGUIHost::s_platform_window_updated.Wait();
+  FrontendHost::s_platform_window_updated.Wait();
 
   if (!wi.has_value())
   {
-    g_nogui_window->ReportError("Error", "Failed to create render window.");
+    g_frontend_window->ReportError("Error", "Failed to create render window.");
     return std::nullopt;
   }
 
@@ -864,16 +864,16 @@ std::optional<WindowInfo> Host::AcquireRenderWindow(bool recreate_window)
 void Host::ReleaseRenderWindow()
 {
   // Need to block here, otherwise the recreation message associates with the old window.
-  g_nogui_window->ExecuteInMessageLoop([]() {
-    g_nogui_window->DestroyPlatformWindow();
-    NoGUIHost::s_platform_window_updated.Post();
+  g_frontend_window->ExecuteInMessageLoop([]() {
+    g_frontend_window->DestroyPlatformWindow();
+    FrontendHost::s_platform_window_updated.Post();
   });
-  NoGUIHost::s_platform_window_updated.Wait();
+  FrontendHost::s_platform_window_updated.Wait();
 }
 
 void Host::OnSystemStarting()
 {
-  NoGUIHost::s_was_paused_by_focus_loss = false;
+  FrontendHost::s_was_paused_by_focus_loss = false;
 }
 
 void Host::OnSystemStarted()
@@ -902,17 +902,17 @@ void Host::BeginPresentFrame()
 
 void Host::RequestResizeHostDisplay(s32 width, s32 height)
 {
-  g_nogui_window->RequestRenderWindowSize(width, height);
+  g_frontend_window->RequestRenderWindowSize(width, height);
 }
 
 void Host::OpenURL(const std::string_view& url)
 {
-  g_nogui_window->OpenURL(url);
+  g_frontend_window->OpenURL(url);
 }
 
 bool Host::CopyTextToClipboard(const std::string_view& text)
 {
-  return g_nogui_window->CopyTextToClipboard(text);
+  return g_frontend_window->CopyTextToClipboard(text);
 }
 
 void Host::OnPerformanceCountersUpdated()
@@ -924,7 +924,7 @@ void Host::OnGameChanged(const std::string& disc_path, const std::string& game_s
 {
   Log_VerbosePrintf("Host::OnGameChanged(\"%s\", \"%s\", \"%s\")", disc_path.c_str(), game_serial.c_str(),
                     game_name.c_str());
-  NoGUIHost::UpdateWindowTitle(game_name);
+  FrontendHost::UpdateWindowTitle(game_name);
 }
 
 void Host::OnAchievementsLoginRequested(Achievements::LoginRequestReason reason)
@@ -959,15 +959,15 @@ void Host::SetMouseMode(bool relative, bool hide_cursor)
 
 void Host::PumpMessagesOnCPUThread()
 {
-  NoGUIHost::ProcessCPUThreadEvents(false);
+  FrontendHost::ProcessCPUThreadEvents(false);
 }
 
-std::unique_ptr<NoGUIPlatform> NoGUIHost::CreatePlatform()
+std::unique_ptr<FrontendPlatform> FrontendHost::CreatePlatform()
 {
-  return NoGUIPlatform::CreateSwitchPlatform();
+  return FrontendPlatform::CreateSwitchPlatform();
 }
 
-std::string NoGUIHost::GetWindowTitle(const std::string& game_title)
+std::string FrontendHost::GetWindowTitle(const std::string& game_title)
 {
   std::string suffix(GetAppConfigSuffix());
   std::string window_title;
@@ -979,27 +979,27 @@ std::string NoGUIHost::GetWindowTitle(const std::string& game_title)
   return window_title;
 }
 
-void NoGUIHost::UpdateWindowTitle(const std::string& game_title)
+void FrontendHost::UpdateWindowTitle(const std::string& game_title)
 {
-  g_nogui_window->SetPlatformWindowTitle(GetWindowTitle(game_title));
+  g_frontend_window->SetPlatformWindowTitle(GetWindowTitle(game_title));
 }
 
 void Host::RunOnCPUThread(std::function<void()> function, bool block /* = false */)
 {
-  std::unique_lock lock(NoGUIHost::s_cpu_thread_events_mutex);
-  NoGUIHost::s_cpu_thread_events.emplace_back(std::move(function), block);
-  NoGUIHost::s_cpu_thread_event_posted.notify_one();
+  std::unique_lock lock(FrontendHost::s_cpu_thread_events_mutex);
+  FrontendHost::s_cpu_thread_events.emplace_back(std::move(function), block);
+  FrontendHost::s_cpu_thread_event_posted.notify_one();
   if (block)
-    NoGUIHost::s_cpu_thread_event_done.wait(lock, []() { return NoGUIHost::s_blocking_cpu_events_pending == 0; });
+    FrontendHost::s_cpu_thread_event_done.wait(lock, []() { return FrontendHost::s_blocking_cpu_events_pending == 0; });
 }
 
-void NoGUIHost::StartAsyncOp(std::function<void(ProgressCallback*)> callback)
+void FrontendHost::StartAsyncOp(std::function<void(ProgressCallback*)> callback)
 {
   CancelAsyncOp();
   s_async_op_thread = std::thread(AsyncOpThreadEntryPoint, std::move(callback));
 }
 
-void NoGUIHost::CancelAsyncOp()
+void FrontendHost::CancelAsyncOp()
 {
   std::unique_lock lock(s_async_op_mutex);
   if (!s_async_op_thread.joinable())
@@ -1012,7 +1012,7 @@ void NoGUIHost::CancelAsyncOp()
   s_async_op_thread.join();
 }
 
-void NoGUIHost::AsyncOpThreadEntryPoint(std::function<void(ProgressCallback*)> callback)
+void FrontendHost::AsyncOpThreadEntryPoint(std::function<void(ProgressCallback*)> callback)
 {
   Threading::SetNameOfCurrentThread("Async Op");
 
@@ -1029,35 +1029,35 @@ void NoGUIHost::AsyncOpThreadEntryPoint(std::function<void(ProgressCallback*)> c
 
 void Host::RefreshGameListAsync(bool invalidate_cache)
 {
-  NoGUIHost::StartAsyncOp(
+  FrontendHost::StartAsyncOp(
     [invalidate_cache](ProgressCallback* progress) { GameList::Refresh(invalidate_cache, false, progress); });
 }
 
 void Host::CancelGameListRefresh()
 {
-  NoGUIHost::CancelAsyncOp();
+  FrontendHost::CancelAsyncOp();
 }
 
 bool Host::IsFullscreen()
 {
-  return NoGUIHost::s_is_fullscreen;
+  return FrontendHost::s_is_fullscreen;
 }
 
 void Host::SetFullscreen(bool enabled)
 {
-  if (NoGUIHost::s_is_fullscreen == enabled)
+  if (FrontendHost::s_is_fullscreen == enabled)
     return;
 
-  NoGUIHost::s_is_fullscreen = enabled;
-  g_nogui_window->SetFullscreen(enabled);
+  FrontendHost::s_is_fullscreen = enabled;
+  g_frontend_window->SetFullscreen(enabled);
 }
 
 std::optional<WindowInfo> Host::GetTopLevelWindowInfo()
 {
-  return g_nogui_window->GetPlatformWindowInfo();
+  return g_frontend_window->GetPlatformWindowInfo();
 }
 
-void NoGUIHost::StopRunning()
+void FrontendHost::StopRunning()
 {
   if (System::IsValid())
   {
@@ -1065,7 +1065,7 @@ void NoGUIHost::StopRunning()
   }
 
   // clear the running flag, this'll break out of the main CPU loop once the VM is shutdown.
-  NoGUIHost::s_running.store(false, std::memory_order_release);
+  FrontendHost::s_running.store(false, std::memory_order_release);
 }
 
 void Host::RequestSystemShutdown(bool allow_confirm, bool save_state)
@@ -1079,12 +1079,12 @@ void Host::RequestSystemShutdown(bool allow_confirm, bool save_state)
 
 std::optional<u32> InputManager::ConvertHostKeyboardStringToCode(const std::string_view& str)
 {
-  return g_nogui_window->ConvertHostKeyboardStringToCode(str);
+  return g_frontend_window->ConvertHostKeyboardStringToCode(str);
 }
 
 std::optional<std::string> InputManager::ConvertHostKeyboardCodeToString(u32 code)
 {
-  return g_nogui_window->ConvertHostKeyboardCodeToString(code);
+  return g_frontend_window->ConvertHostKeyboardCodeToString(code);
 }
 
 const char* InputManager::ConvertHostKeyboardCodeToIcon(u32 code)
@@ -1103,7 +1103,7 @@ static void SignalHandler(int signal)
   {
     std::fprintf(stderr, "Received CTRL+C, attempting graceful shutdown. Press CTRL+C again to force.\n");
     graceful_shutdown_attempted = true;
-    NoGUIHost::StopRunning();
+    FrontendHost::StopRunning();
     return;
   }
 
@@ -1117,20 +1117,20 @@ static void SignalHandler(int signal)
 #endif
 }
 
-void NoGUIHost::HookSignals()
+void FrontendHost::HookSignals()
 {
   std::signal(SIGINT, SignalHandler);
   std::signal(SIGTERM, SignalHandler);
 }
 
-void NoGUIHost::InitializeEarlyConsole()
+void FrontendHost::InitializeEarlyConsole()
 {
   const bool was_console_enabled = Log::IsConsoleOutputEnabled();
   if (!was_console_enabled)
     Log::SetConsoleOutputParams(true);
 }
 
-void NoGUIHost::PrintCommandLineVersion()
+void FrontendHost::PrintCommandLineVersion()
 {
   InitializeEarlyConsole();
 
@@ -1139,7 +1139,7 @@ void NoGUIHost::PrintCommandLineVersion()
   std::fprintf(stderr, "\n");
 }
 
-void NoGUIHost::PrintCommandLineHelp(const char* progname)
+void FrontendHost::PrintCommandLineHelp(const char* progname)
 {
   InitializeEarlyConsole();
 
@@ -1181,7 +1181,7 @@ std::optional<SystemBootParameters>& AutoBoot(std::optional<SystemBootParameters
   return autoboot;
 }
 
-bool NoGUIHost::ParseCommandLineParametersAndInitializeConfig(int argc, char* argv[],
+bool FrontendHost::ParseCommandLineParametersAndInitializeConfig(int argc, char* argv[],
                                                               std::optional<SystemBootParameters>& autoboot)
 {
   std::optional<s32> state_index;
@@ -1299,7 +1299,7 @@ bool NoGUIHost::ParseCommandLineParametersAndInitializeConfig(int argc, char* ar
       }
       else if (argv[i][0] == '-')
       {
-        g_nogui_window->ReportError("Error", fmt::format("Unknown parameter: {}", argv[i]));
+        g_frontend_window->ReportError("Error", fmt::format("Unknown parameter: {}", argv[i]));
         return false;
       }
 
@@ -1313,10 +1313,10 @@ bool NoGUIHost::ParseCommandLineParametersAndInitializeConfig(int argc, char* ar
   }
 
   // To do anything useful, we need the config initialized.
-  if (!NoGUIHost::InitializeConfig(std::move(settings_filename)))
+  if (!FrontendHost::InitializeConfig(std::move(settings_filename)))
   {
     // NOTE: No point translating this, because no config means the language won't be loaded anyway.
-    g_nogui_window->ReportError("Error", "Failed to initialize config.");
+    g_frontend_window->ReportError("Error", "Failed to initialize config.");
     return false;
   }
 
@@ -1324,7 +1324,7 @@ bool NoGUIHost::ParseCommandLineParametersAndInitializeConfig(int argc, char* ar
 
   if (autoboot && !autoboot->filename.empty() && !FileSystem::FileExists(autoboot->filename.c_str()))
   {
-    g_nogui_window->ReportError("Error", fmt::format("File '{}' does not exist.", autoboot->filename));
+    g_frontend_window->ReportError("Error", fmt::format("File '{}' does not exist.", autoboot->filename));
     return false;
   }
 
@@ -1349,7 +1349,7 @@ bool NoGUIHost::ParseCommandLineParametersAndInitializeConfig(int argc, char* ar
 
     if (autoboot->save_state.empty() || !FileSystem::FileExists(autoboot->save_state.c_str()))
     {
-      g_nogui_window->ReportError("Error", "The specified save state does not exist.");
+      g_frontend_window->ReportError("Error", "The specified save state does not exist.");
       return false;
     }
   }
@@ -1362,46 +1362,46 @@ bool NoGUIHost::ParseCommandLineParametersAndInitializeConfig(int argc, char* ar
   return true;
 }
 
-NoGUIHost::AsyncOpProgressCallback::AsyncOpProgressCallback(std::string name)
+FrontendHost::AsyncOpProgressCallback::AsyncOpProgressCallback(std::string name)
   : BaseProgressCallback(), m_name(std::move(name))
 {
   ImGuiFullscreen::OpenBackgroundProgressDialog(m_name.c_str(), "", 0, 100, 0);
 }
 
-NoGUIHost::AsyncOpProgressCallback::~AsyncOpProgressCallback()
+FrontendHost::AsyncOpProgressCallback::~AsyncOpProgressCallback()
 {
   ImGuiFullscreen::CloseBackgroundProgressDialog(m_name.c_str());
 }
 
-void NoGUIHost::AsyncOpProgressCallback::PushState()
+void FrontendHost::AsyncOpProgressCallback::PushState()
 {
   BaseProgressCallback::PushState();
 }
 
-void NoGUIHost::AsyncOpProgressCallback::PopState()
+void FrontendHost::AsyncOpProgressCallback::PopState()
 {
   BaseProgressCallback::PopState();
   Redraw(true);
 }
 
-void NoGUIHost::AsyncOpProgressCallback::SetCancellable(bool cancellable)
+void FrontendHost::AsyncOpProgressCallback::SetCancellable(bool cancellable)
 {
   BaseProgressCallback::SetCancellable(cancellable);
   Redraw(true);
 }
 
-void NoGUIHost::AsyncOpProgressCallback::SetTitle(const char* title)
+void FrontendHost::AsyncOpProgressCallback::SetTitle(const char* title)
 {
   // todo?
 }
 
-void NoGUIHost::AsyncOpProgressCallback::SetStatusText(const char* text)
+void FrontendHost::AsyncOpProgressCallback::SetStatusText(const char* text)
 {
   BaseProgressCallback::SetStatusText(text);
   Redraw(true);
 }
 
-void NoGUIHost::AsyncOpProgressCallback::SetProgressRange(u32 range)
+void FrontendHost::AsyncOpProgressCallback::SetProgressRange(u32 range)
 {
   u32 last_range = m_progress_range;
 
@@ -1411,7 +1411,7 @@ void NoGUIHost::AsyncOpProgressCallback::SetProgressRange(u32 range)
     Redraw(false);
 }
 
-void NoGUIHost::AsyncOpProgressCallback::SetProgressValue(u32 value)
+void FrontendHost::AsyncOpProgressCallback::SetProgressValue(u32 value)
 {
   u32 lastValue = m_progress_value;
 
@@ -1421,7 +1421,7 @@ void NoGUIHost::AsyncOpProgressCallback::SetProgressValue(u32 value)
     Redraw(false);
 }
 
-void NoGUIHost::AsyncOpProgressCallback::Redraw(bool force)
+void FrontendHost::AsyncOpProgressCallback::Redraw(bool force)
 {
   const int percent =
     static_cast<int>((static_cast<float>(m_progress_value) / static_cast<float>(m_progress_range)) * 100.0f);
@@ -1432,44 +1432,44 @@ void NoGUIHost::AsyncOpProgressCallback::Redraw(bool force)
   ImGuiFullscreen::UpdateBackgroundProgressDialog(m_name.c_str(), m_status_text, 0, 100, percent);
 }
 
-void NoGUIHost::AsyncOpProgressCallback::DisplayError(const char* message)
+void FrontendHost::AsyncOpProgressCallback::DisplayError(const char* message)
 {
   Log_ErrorPrint(message);
   Host::ReportErrorAsync("Error", message);
 }
 
-void NoGUIHost::AsyncOpProgressCallback::DisplayWarning(const char* message)
+void FrontendHost::AsyncOpProgressCallback::DisplayWarning(const char* message)
 {
   Log_WarningPrint(message);
 }
 
-void NoGUIHost::AsyncOpProgressCallback::DisplayInformation(const char* message)
+void FrontendHost::AsyncOpProgressCallback::DisplayInformation(const char* message)
 {
   Log_InfoPrint(message);
 }
 
-void NoGUIHost::AsyncOpProgressCallback::DisplayDebugMessage(const char* message)
+void FrontendHost::AsyncOpProgressCallback::DisplayDebugMessage(const char* message)
 {
   Log_DebugPrint(message);
 }
 
-void NoGUIHost::AsyncOpProgressCallback::ModalError(const char* message)
+void FrontendHost::AsyncOpProgressCallback::ModalError(const char* message)
 {
   Log_ErrorPrint(message);
   Host::ReportErrorAsync("Error", message);
 }
 
-bool NoGUIHost::AsyncOpProgressCallback::ModalConfirmation(const char* message)
+bool FrontendHost::AsyncOpProgressCallback::ModalConfirmation(const char* message)
 {
   return false;
 }
 
-void NoGUIHost::AsyncOpProgressCallback::ModalInformation(const char* message)
+void FrontendHost::AsyncOpProgressCallback::ModalInformation(const char* message)
 {
   Log_InfoPrint(message);
 }
 
-void NoGUIHost::AsyncOpProgressCallback::SetCancelled()
+void FrontendHost::AsyncOpProgressCallback::SetCancelled()
 {
   if (m_cancellable)
     m_cancelled = true;
@@ -1554,40 +1554,40 @@ int main(int argc, char* argv[])
   // not seem to work via nxlink so we cannot enable
   // early logging via command line
   if (s_nxlink_stdio_handle != -1)
-    NoGUIHost::InitializeEarlyConsole();
+    FrontendHost::InitializeEarlyConsole();
 #endif
 
   CrashHandler::Install();
 
-  g_nogui_window = NoGUIHost::CreatePlatform();
-  if (!g_nogui_window)
+  g_frontend_window = FrontendHost::CreatePlatform();
+  if (!g_frontend_window)
     return EXIT_FAILURE;
 
   std::optional<SystemBootParameters> autoboot;
-  if (!NoGUIHost::ParseCommandLineParametersAndInitializeConfig(argc, argv, autoboot))
+  if (!FrontendHost::ParseCommandLineParametersAndInitializeConfig(argc, argv, autoboot))
     return EXIT_FAILURE;
 
 #ifdef __SWITCH__
-  ApplySwitchClockSettings(*NoGUIHost::s_base_settings_interface);
+  ApplySwitchClockSettings(*FrontendHost::s_base_settings_interface);
 #endif
 
   // the rest of initialization happens on the CPU thread.
-  NoGUIHost::HookSignals();
-  NoGUIHost::StartCPUThread();
+  FrontendHost::HookSignals();
+  FrontendHost::StartCPUThread();
 
   if (autoboot)
-    NoGUIHost::StartSystem(std::move(autoboot.value()));
+    FrontendHost::StartSystem(std::move(autoboot.value()));
 
-  g_nogui_window->RunMessageLoop();
+  g_frontend_window->RunMessageLoop();
 
-  NoGUIHost::CancelAsyncOp();
-  NoGUIHost::StopCPUThread();
+  FrontendHost::CancelAsyncOp();
+  FrontendHost::StopCPUThread();
 
   // Ensure log is flushed.
   Log::SetFileOutputParams(false, nullptr);
 
-  NoGUIHost::s_base_settings_interface.reset();
-  g_nogui_window.reset();
+  FrontendHost::s_base_settings_interface.reset();
+  g_frontend_window.reset();
 
 #ifdef __SWITCH__
   if (s_switch_clkrst_initialized)

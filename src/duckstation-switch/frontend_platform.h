@@ -15,10 +15,10 @@
 
 class SettingsInterface;
 
-class NoGUIPlatform
+class FrontendPlatform
 {
 public:
-  virtual ~NoGUIPlatform() = default;
+  virtual ~FrontendPlatform() = default;
 
   virtual void ReportError(const std::string_view& title, const std::string_view& message) = 0;
   virtual bool ConfirmMessage(const std::string_view& title, const std::string_view& message) = 0;
@@ -47,22 +47,22 @@ public:
   virtual bool CopyTextToClipboard(const std::string_view& text) = 0;
 
 #ifdef _WIN32
-  static std::unique_ptr<NoGUIPlatform> CreateWin32Platform();
+  static std::unique_ptr<FrontendPlatform> CreateWin32Platform();
 #endif
 #ifdef __APPLE__
-  static std::unique_ptr<NoGUIPlatform> CreateCocoaPlatform();
+  static std::unique_ptr<FrontendPlatform> CreateCocoaPlatform();
 #endif
 #ifdef ENABLE_SDL2
-  static std::unique_ptr<NoGUIPlatform> CreateSDLPlatform();
+  static std::unique_ptr<FrontendPlatform> CreateSDLPlatform();
 #endif
 #ifdef __SWITCH__
-  static std::unique_ptr<NoGUIPlatform> CreateSwitchPlatform();
+  static std::unique_ptr<FrontendPlatform> CreateSwitchPlatform();
 #endif
-#ifdef NOGUI_PLATFORM_WAYLAND
-  static std::unique_ptr<NoGUIPlatform> CreateWaylandPlatform();
+#ifdef FRONTEND_PLATFORM_WAYLAND
+  static std::unique_ptr<FrontendPlatform> CreateWaylandPlatform();
 #endif
-#ifdef NOGUI_PLATFORM_X11
-  static std::unique_ptr<NoGUIPlatform> CreateX11Platform();
+#ifdef FRONTEND_PLATFORM_X11
+  static std::unique_ptr<FrontendPlatform> CreateX11Platform();
 #endif
 
 protected:
@@ -70,4 +70,4 @@ protected:
   static constexpr s32 DEFAULT_WINDOW_HEIGHT = 720;
 };
 
-extern std::unique_ptr<NoGUIPlatform> g_nogui_window;
+extern std::unique_ptr<FrontendPlatform> g_frontend_window;

@@ -8,18 +8,18 @@
 #include <mutex>
 #include <unordered_map>
 
-#include "nogui_platform.h"
+#include "frontend_platform.h"
 
 #include "wayland-xdg-decoration-client-protocol.h"
 #include "wayland-xdg-shell-client-protocol.h"
 #include <wayland-client-protocol.h>
 #include <xkbcommon/xkbcommon.h>
 
-class WaylandNoGUIPlatform : public NoGUIPlatform
+class WaylandFrontendPlatform : public FrontendPlatform
 {
 public:
-  WaylandNoGUIPlatform();
-  ~WaylandNoGUIPlatform();
+  WaylandFrontendPlatform();
+  ~WaylandFrontendPlatform();
 
   bool Initialize();
 

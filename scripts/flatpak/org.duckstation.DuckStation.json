@@ -31,7 +31,7 @@
         "config-opts": [
           "-DCMAKE_BUILD_TYPE=Release",
           "-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON",
-          "-DBUILD_NOGUI_FRONTEND=OFF",
+          "-DBUILD_SWITCH_FRONTEND=OFF",
           "-DBUILD_QT_FRONTEND=ON",
           "-DBUILD_TESTS=OFF",
           "-DCMAKE_C_COMPILER=/usr/lib/sdk/llvm17/bin/clang",

@@ -7,7 +7,7 @@
 #include <functional>
 #include <string>
 
-namespace NoGUIHost {
+namespace FrontendHost {
 /// Sets batch mode (exit after game shutdown).
 bool InBatchMode();
 void SetBatchMode(bool enabled);
@@ -35,4 +35,4 @@ void PlatformWindowFocusLost();
 void PlatformDevicesChanged();
 bool GetSavedPlatformWindowGeometry(s32* x, s32* y, s32* width, s32* height);
 void SavePlatformWindowGeometry(s32 x, s32 y, s32 width, s32 height);
-} // namespace NoGUIHost
+} // namespace FrontendHost

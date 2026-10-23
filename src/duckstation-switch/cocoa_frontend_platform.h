@@ -14,11 +14,11 @@
 #error ARC should not be enabled.
 #endif
 
-#include "nogui_platform.h"
+#include "frontend_platform.h"
 
 #include <atomic>
 
-@interface CocoaNoGUIView : NSView<NSWindowDelegate>
+@interface CocoaFrontendView : NSView<NSWindowDelegate>
 - (BOOL)acceptsFirstResponder;
 - (BOOL)canBecomeKeyView;
 - (void)mouseDown:(NSEvent *)event;
@@ -33,11 +33,11 @@
 - (void)windowDidEndLiveResize:(NSNotification *)notif;
 @end
 
-class CocoaNoGUIPlatform : public NoGUIPlatform
+class CocoaFrontendPlatform : public FrontendPlatform
 {
 public:
-  CocoaNoGUIPlatform();
-  ~CocoaNoGUIPlatform();
+  CocoaFrontendPlatform();
+  ~CocoaFrontendPlatform();
 
   bool Initialize();
 

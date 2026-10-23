@@ -1,16 +1,16 @@
 // SPDX-FileCopyrightText: 2019-2023 Connor McLaughlin <stenzek@gmail.com>
 // SPDX-License-Identifier: (GPL-3.0 OR CC-BY-NC-ND-4.0)
 
-#include "x11_nogui_platform.h"
+#include "x11_frontend_platform.h"
 
-Log_SetChannel(X11NoGUIPlatform);
+Log_SetChannel(X11FrontendPlatform);
 
-X11NoGUIPlatform::X11NoGUIPlatform()
+X11FrontendPlatform::X11FrontendPlatform()
 {
   m_message_loop_running.store(true, std::memory_order_release);
 }
 
-X11NoGUIPlatform::~X11NoGUIPlatform()
+X11FrontendPlatform::~X11FrontendPlatform()
 {
   if (m_display)
   {
@@ -21,7 +21,7 @@ X11NoGUIPlatform::~X11NoGUIPlatform()
   }
 }
 
-bool X11NoGUIPlatform::Initialize()
+bool X11FrontendPlatform::Initialize()
 {
   const int res = XInitThreads();
   if (res == 0)
@@ -38,23 +38,23 @@ bool X11NoGUIPlatform::Initialize()
   return true;
 }
 
-void X11NoGUIPlatform::ReportError(const std::string_view& title, const std::string_view& message)
+void X11FrontendPlatform::ReportError(const std::string_view& title, const std::string_view& message)
 {
   // not implemented
 }
 
-bool X11NoGUIPlatform::ConfirmMessage(const std::string_view& title, const std::string_view& message)
+bool X11FrontendPlatform::ConfirmMessage(const std::string_view& title, const std::string_view& message)
 {
   // not implemented
   return true;
 }
 
-void X11NoGUIPlatform::SetDefaultConfig(SettingsInterface& si) {}
+void X11FrontendPlatform::SetDefaultConfig(SettingsInterface& si) {}
 
-bool X11NoGUIPlatform::CreatePlatformWindow(std::string title)
+bool X11FrontendPlatform::CreatePlatformWindow(std::string title)
 {
   s32 window_x, window_y, window_width, window_height;
-  bool has_window_pos = NoGUIHost::GetSavedPlatformWindowGeometry(&window_x, &window_y, &window_width, &window_height);
+  bool has_window_pos = FrontendHost::GetSavedPlatformWindowGeometry(&window_x, &window_y, &window_width, &window_height);
   if (!has_window_pos)
   {
     window_x = 0;
@@ -99,12 +99,12 @@ bool X11NoGUIPlatform::CreatePlatformWindow(std::string title)
   return true;
 }
 
-bool X11NoGUIPlatform::HasPlatformWindow() const
+bool X11FrontendPlatform::HasPlatformWindow() const
 {
   return m_window != 0;
 }
 
-void X11NoGUIPlatform::DestroyPlatformWindow()
+void X11FrontendPlatform::DestroyPlatformWindow()
 {
   m_window_info = {};
 
@@ -118,7 +118,7 @@ void X11NoGUIPlatform::DestroyPlatformWindow()
   }
 }
 
-std::optional<WindowInfo> X11NoGUIPlatform::GetPlatformWindowInfo()
+std::optional<WindowInfo> X11FrontendPlatform::GetPlatformWindowInfo()
 {
   if (m_window_info.type == WindowInfo::Type::X11)
     return m_window_info;
@@ -126,7 +126,7 @@ std::optional<WindowInfo> X11NoGUIPlatform::GetPlatformWindowInfo()
     return std::nullopt;
 }
 
-void X11NoGUIPlatform::SetPlatformWindowTitle(std::string title)
+void X11FrontendPlatform::SetPlatformWindowTitle(std::string title)
 {
   ExecuteInMessageLoop([this, title = std::move(title)]() {
     if (m_window)
@@ -137,7 +137,7 @@ void X11NoGUIPlatform::SetPlatformWindowTitle(std::string title)
   });
 }
 
-void X11NoGUIPlatform::InitializeKeyMap()
+void X11FrontendPlatform::InitializeKeyMap()
 {
   int min_keycode = 0, max_keycode = -1;
   XDisplayKeycodes(m_display, &min_keycode, &max_keycode);
@@ -161,7 +161,7 @@ void X11NoGUIPlatform::InitializeKeyMap()
   }
 }
 
-std::optional<u32> X11NoGUIPlatform::ConvertHostKeyboardStringToCode(const std::string_view& str)
+std::optional<u32> X11FrontendPlatform::ConvertHostKeyboardStringToCode(const std::string_view& str)
 {
   for (const auto& it : m_key_map)
   {
@@ -172,13 +172,13 @@ std::optional<u32> X11NoGUIPlatform::ConvertHostKeyboardStringToCode(const std::
   return std::nullopt;
 }
 
-std::optional<std::string> X11NoGUIPlatform::ConvertHostKeyboardCodeToString(u32 code)
+std::optional<std::string> X11FrontendPlatform::ConvertHostKeyboardCodeToString(u32 code)
 {
   const auto it = m_key_map.find(static_cast<s32>(code));
   return (it != m_key_map.end()) ? std::optional<std::string>(it->second) : std::nullopt;
 }
 
-void X11NoGUIPlatform::ProcessXEvents()
+void X11FrontendPlatform::ProcessXEvents()
 {
   XDisplayLocker locker(m_display);
 
@@ -196,7 +196,7 @@ void X11NoGUIPlatform::ProcessXEvents()
         {
           KeySym upper_sym = sym;
           XConvertCase(sym, &sym, &upper_sym);
-          NoGUIHost::ProcessPlatformKeyEvent(static_cast<s32>(upper_sym), (event.type == KeyPress));
+          FrontendHost::ProcessPlatformKeyEvent(static_cast<s32>(upper_sym), (event.type == KeyPress));
         }
       }
       break;
@@ -207,21 +207,21 @@ void X11NoGUIPlatform::ProcessXEvents()
         if (event.xbutton.button >= Button4 && event.xbutton.button <= Button5)
         {
           // Button 4/5 are mouse wheel events on X, apparently...
-          NoGUIHost::ProcessPlatformMouseWheelEvent(0.0f, (event.xbutton.button == Button4) ? 1.0f : -1.0f);
+          FrontendHost::ProcessPlatformMouseWheelEvent(0.0f, (event.xbutton.button == Button4) ? 1.0f : -1.0f);
         }
         else if (event.xbutton.button >= Button1)
         {
           // Swap middle and right buttons.
           const u32 xbutton = event.xbutton.button;
           const u32 mapped_button = (xbutton == Button3) ? 1 : (xbutton == Button2 ? 2 : (xbutton - Button1));
-          NoGUIHost::ProcessPlatformMouseButtonEvent(mapped_button, event.type == ButtonPress);
+          FrontendHost::ProcessPlatformMouseButtonEvent(mapped_button, event.type == ButtonPress);
         }
       }
       break;
 
       case MotionNotify:
       {
-        NoGUIHost::ProcessPlatformMouseMoveEvent(static_cast<float>(event.xmotion.x),
+        FrontendHost::ProcessPlatformMouseMoveEvent(static_cast<float>(event.xmotion.x),
                                                  static_cast<float>(event.xmotion.y));
       }
       break;
@@ -230,19 +230,19 @@ void X11NoGUIPlatform::ProcessXEvents()
       {
         const s32 width = std::max<s32>(static_cast<s32>(event.xconfigure.width), 1);
         const s32 height = std::max<s32>(static_cast<s32>(event.xconfigure.height), 1);
-        NoGUIHost::ProcessPlatformWindowResize(width, height, m_window_info.surface_scale);
+        FrontendHost::ProcessPlatformWindowResize(width, height, m_window_info.surface_scale);
       }
       break;
 
       case FocusIn:
       {
-        NoGUIHost::PlatformWindowFocusGained();
+        FrontendHost::PlatformWindowFocusGained();
       }
       break;
 
       case FocusOut:
       {
-        NoGUIHost::PlatformWindowFocusGained();
+        FrontendHost::PlatformWindowFocusGained();
       }
       break;
 
@@ -259,7 +259,7 @@ void X11NoGUIPlatform::ProcessXEvents()
   }
 }
 
-void X11NoGUIPlatform::RunMessageLoop()
+void X11FrontendPlatform::RunMessageLoop()
 {
   while (m_message_loop_running.load(std::memory_order_acquire))
   {
@@ -282,18 +282,18 @@ void X11NoGUIPlatform::RunMessageLoop()
   }
 }
 
-void X11NoGUIPlatform::ExecuteInMessageLoop(std::function<void()> func)
+void X11FrontendPlatform::ExecuteInMessageLoop(std::function<void()> func)
 {
   std::unique_lock lock(m_callback_queue_mutex);
   m_callback_queue.push_back(std::move(func));
 }
 
-void X11NoGUIPlatform::QuitMessageLoop()
+void X11FrontendPlatform::QuitMessageLoop()
 {
   m_message_loop_running.store(false, std::memory_order_release);
 }
 
-void X11NoGUIPlatform::SetFullscreen(bool enabled)
+void X11FrontendPlatform::SetFullscreen(bool enabled)
 {
   if (!m_window || m_fullscreen.load(std::memory_order_acquire) == enabled)
     return;
@@ -317,7 +317,7 @@ void X11NoGUIPlatform::SetFullscreen(bool enabled)
   m_fullscreen.store(enabled, std::memory_order_release);
 }
 
-void X11NoGUIPlatform::SaveWindowGeometry()
+void X11FrontendPlatform::SaveWindowGeometry()
 {
   int x = 0, y = 0;
   unsigned int width = 0, height = 0;
@@ -325,30 +325,30 @@ void X11NoGUIPlatform::SaveWindowGeometry()
   Window dummy_window;
   XGetGeometry(m_display, m_window, &dummy_window, &x, &y, &width, &height, &dummy_border, &dummy_depth);
   if (width > 0 && height > 0)
-    NoGUIHost::SavePlatformWindowGeometry(x, y, width, height);
+    FrontendHost::SavePlatformWindowGeometry(x, y, width, height);
 }
 
-bool X11NoGUIPlatform::RequestRenderWindowSize(s32 new_window_width, s32 new_window_height)
+bool X11FrontendPlatform::RequestRenderWindowSize(s32 new_window_width, s32 new_window_height)
 {
   return false;
 }
 
-bool X11NoGUIPlatform::OpenURL(const std::string_view& url)
+bool X11FrontendPlatform::OpenURL(const std::string_view& url)
 {
-  Log_ErrorPrintf("X11NoGUIPlatform::OpenURL() not implemented: %.*s", static_cast<int>(url.size()), url.data());
+  Log_ErrorPrintf("X11FrontendPlatform::OpenURL() not implemented: %.*s", static_cast<int>(url.size()), url.data());
   return false;
 }
 
-bool X11NoGUIPlatform::CopyTextToClipboard(const std::string_view& text)
+bool X11FrontendPlatform::CopyTextToClipboard(const std::string_view& text)
 {
-  Log_ErrorPrintf("X11NoGUIPlatform::CopyTextToClipboard() not implemented: %.*s", static_cast<int>(text.size()),
+  Log_ErrorPrintf("X11FrontendPlatform::CopyTextToClipboard() not implemented: %.*s", static_cast<int>(text.size()),
                   text.data());
   return false;
 }
 
-std::unique_ptr<NoGUIPlatform> NoGUIPlatform::CreateX11Platform()
+std::unique_ptr<FrontendPlatform> FrontendPlatform::CreateX11Platform()
 {
-  std::unique_ptr<X11NoGUIPlatform> ret = std::unique_ptr<X11NoGUIPlatform>(new X11NoGUIPlatform());
+  std::unique_ptr<X11FrontendPlatform> ret = std::unique_ptr<X11FrontendPlatform>(new X11FrontendPlatform());
   if (!ret->Initialize())
     return {};
 

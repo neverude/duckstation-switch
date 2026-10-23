@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2019-2023 Connor McLaughlin <stenzek@gmail.com>
 // SPDX-License-Identifier: (GPL-3.0 OR CC-BY-NC-ND-4.0)
 
-#include "win32_nogui_platform.h"
-#include "nogui_host.h"
+#include "win32_frontend_platform.h"
+#include "frontend_host.h"
 #include "resource.h"
 #include "win32_key_names.h"
 
@@ -18,7 +18,7 @@
 #include <shellapi.h>
 #include <tchar.h>
 
-static constexpr LPCWSTR WINDOW_CLASS_NAME = L"DuckStationNoGUI";
+static constexpr LPCWSTR WINDOW_CLASS_NAME = L"DuckStationFrontend";
 static constexpr DWORD WINDOWED_STYLE = WS_OVERLAPPEDWINDOW | WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU | WS_SIZEBOX;
 static constexpr DWORD WINDOWED_EXSTYLE = WS_EX_DLGMODALFRAME | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE;
 static constexpr DWORD FULLSCREEN_STYLE = WS_POPUP | WS_MINIMIZEBOX;
@@ -40,17 +40,17 @@ static float GetWindowScale(HWND hwnd)
   return (dpi > 0) ? std::max(1.0f, static_cast<float>(dpi) / 96.0f) : 1.0f;
 }
 
-Win32NoGUIPlatform::Win32NoGUIPlatform()
+Win32FrontendPlatform::Win32FrontendPlatform()
 {
   m_message_loop_running.store(true, std::memory_order_release);
 }
 
-Win32NoGUIPlatform::~Win32NoGUIPlatform()
+Win32FrontendPlatform::~Win32FrontendPlatform()
 {
   UnregisterClassW(WINDOW_CLASS_NAME, GetModuleHandle(nullptr));
 }
 
-bool Win32NoGUIPlatform::Initialize()
+bool Win32FrontendPlatform::Initialize()
 {
   WNDCLASSEXW wc = {};
   wc.cbSize = sizeof(WNDCLASSEXW);
@@ -76,7 +76,7 @@ bool Win32NoGUIPlatform::Initialize()
   return true;
 }
 
-void Win32NoGUIPlatform::ReportError(const std::string_view& title, const std::string_view& message)
+void Win32FrontendPlatform::ReportError(const std::string_view& title, const std::string_view& message)
 {
   const std::wstring title_copy(StringUtil::UTF8StringToWideString(title));
   const std::wstring message_copy(StringUtil::UTF8StringToWideString(message));
@@ -84,7 +84,7 @@ void Win32NoGUIPlatform::ReportError(const std::string_view& title, const std::s
   MessageBoxW(m_hwnd, message_copy.c_str(), title_copy.c_str(), MB_ICONERROR | MB_OK);
 }
 
-bool Win32NoGUIPlatform::ConfirmMessage(const std::string_view& title, const std::string_view& message)
+bool Win32FrontendPlatform::ConfirmMessage(const std::string_view& title, const std::string_view& message)
 {
   const std::wstring title_copy(StringUtil::UTF8StringToWideString(title));
   const std::wstring message_copy(StringUtil::UTF8StringToWideString(message));
@@ -92,15 +92,15 @@ bool Win32NoGUIPlatform::ConfirmMessage(const std::string_view& title, const std
   return (MessageBoxW(m_hwnd, message_copy.c_str(), title_copy.c_str(), MB_ICONQUESTION | MB_YESNO) == IDYES);
 }
 
-void Win32NoGUIPlatform::SetDefaultConfig(SettingsInterface& si)
+void Win32FrontendPlatform::SetDefaultConfig(SettingsInterface& si)
 {
   // noop
 }
 
-bool Win32NoGUIPlatform::CreatePlatformWindow(std::string title)
+bool Win32FrontendPlatform::CreatePlatformWindow(std::string title)
 {
   s32 window_x, window_y, window_width, window_height;
-  if (!NoGUIHost::GetSavedPlatformWindowGeometry(&window_x, &window_y, &window_width, &window_height))
+  if (!FrontendHost::GetSavedPlatformWindowGeometry(&window_x, &window_y, &window_width, &window_height))
   {
     window_x = CW_USEDEFAULT;
     window_y = CW_USEDEFAULT;
@@ -136,12 +136,12 @@ bool Win32NoGUIPlatform::CreatePlatformWindow(std::string title)
   return true;
 }
 
-bool Win32NoGUIPlatform::HasPlatformWindow() const
+bool Win32FrontendPlatform::HasPlatformWindow() const
 {
   return (m_hwnd != NULL);
 }
 
-void Win32NoGUIPlatform::DestroyPlatformWindow()
+void Win32FrontendPlatform::DestroyPlatformWindow()
 {
   if (!m_hwnd)
     return;
@@ -155,14 +155,14 @@ void Win32NoGUIPlatform::DestroyPlatformWindow()
   RECT rc;
   if (!m_fullscreen.load(std::memory_order_acquire) && GetWindowRect(m_hwnd, &rc))
   {
-    NoGUIHost::SavePlatformWindowGeometry(rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top);
+    FrontendHost::SavePlatformWindowGeometry(rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top);
   }
 
   DestroyWindow(m_hwnd);
   m_hwnd = {};
 }
 
-std::optional<WindowInfo> Win32NoGUIPlatform::GetPlatformWindowInfo()
+std::optional<WindowInfo> Win32FrontendPlatform::GetPlatformWindowInfo()
 {
   if (!m_hwnd)
     return std::nullopt;
@@ -179,7 +179,7 @@ std::optional<WindowInfo> Win32NoGUIPlatform::GetPlatformWindowInfo()
   return wi;
 }
 
-void Win32NoGUIPlatform::SetPlatformWindowTitle(std::string title)
+void Win32FrontendPlatform::SetPlatformWindowTitle(std::string title)
 {
   if (!m_hwnd)
     return;
@@ -187,19 +187,19 @@ void Win32NoGUIPlatform::SetPlatformWindowTitle(std::string title)
   SetWindowTextW(m_hwnd, StringUtil::UTF8StringToWideString(title).c_str());
 }
 
-std::optional<u32> Win32NoGUIPlatform::ConvertHostKeyboardStringToCode(const std::string_view& str)
+std::optional<u32> Win32FrontendPlatform::ConvertHostKeyboardStringToCode(const std::string_view& str)
 {
   std::optional<DWORD> converted(Win32KeyNames::GetKeyCodeForName(str));
   return converted.has_value() ? std::optional<u32>(static_cast<u32>(converted.value())) : std::nullopt;
 }
 
-std::optional<std::string> Win32NoGUIPlatform::ConvertHostKeyboardCodeToString(u32 code)
+std::optional<std::string> Win32FrontendPlatform::ConvertHostKeyboardCodeToString(u32 code)
 {
   const char* converted = Win32KeyNames::GetKeyName(code);
   return converted ? std::optional<std::string>(converted) : std::nullopt;
 }
 
-void Win32NoGUIPlatform::RunMessageLoop()
+void Win32FrontendPlatform::RunMessageLoop()
 {
   while (m_message_loop_running.load(std::memory_order_acquire))
   {
@@ -220,7 +220,7 @@ void Win32NoGUIPlatform::RunMessageLoop()
   }
 }
 
-void Win32NoGUIPlatform::ExecuteInMessageLoop(std::function<void()> func)
+void Win32FrontendPlatform::ExecuteInMessageLoop(std::function<void()> func)
 {
   std::function<void()>* pfunc = new std::function<void()>(std::move(func));
   if (m_hwnd)
@@ -229,13 +229,13 @@ void Win32NoGUIPlatform::ExecuteInMessageLoop(std::function<void()> func)
     PostThreadMessageW(m_window_thread_id, WM_FUNC, 0, reinterpret_cast<LPARAM>(pfunc));
 }
 
-void Win32NoGUIPlatform::QuitMessageLoop()
+void Win32FrontendPlatform::QuitMessageLoop()
 {
   m_message_loop_running.store(false, std::memory_order_release);
   PostThreadMessageW(m_window_thread_id, WM_WAKEUP, 0, 0);
 }
 
-void Win32NoGUIPlatform::SetFullscreen(bool enabled)
+void Win32FrontendPlatform::SetFullscreen(bool enabled)
 {
   if (!m_hwnd || m_fullscreen.load(std::memory_order_acquire) == enabled)
     return;
@@ -272,7 +272,7 @@ void Win32NoGUIPlatform::SetFullscreen(bool enabled)
   m_fullscreen.store(enabled, std::memory_order_release);
 }
 
-bool Win32NoGUIPlatform::RequestRenderWindowSize(s32 new_window_width, s32 new_window_height)
+bool Win32FrontendPlatform::RequestRenderWindowSize(s32 new_window_width, s32 new_window_height)
 {
   RECT rc;
   if (!m_hwnd || m_fullscreen.load(std::memory_order_acquire) || !GetWindowRect(m_hwnd, &rc))
@@ -283,13 +283,13 @@ bool Win32NoGUIPlatform::RequestRenderWindowSize(s32 new_window_width, s32 new_w
   return SetWindowPos(m_hwnd, NULL, rc.left, rc.top, new_window_width, new_window_height, SWP_SHOWWINDOW);
 }
 
-bool Win32NoGUIPlatform::OpenURL(const std::string_view& url)
+bool Win32FrontendPlatform::OpenURL(const std::string_view& url)
 {
   return (ShellExecuteW(nullptr, L"open", StringUtil::UTF8StringToWideString(url).c_str(), nullptr, nullptr,
                         SW_SHOWNORMAL) != NULL);
 }
 
-bool Win32NoGUIPlatform::CopyTextToClipboard(const std::string_view& text)
+bool Win32FrontendPlatform::CopyTextToClipboard(const std::string_view& text)
 {
   const int wlen = MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast<int>(text.length()), nullptr, 0);
   if (wlen < 0)
@@ -314,9 +314,9 @@ bool Win32NoGUIPlatform::CopyTextToClipboard(const std::string_view& text)
   return true;
 }
 
-LRESULT CALLBACK Win32NoGUIPlatform::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK Win32FrontendPlatform::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-  Win32NoGUIPlatform* platform = static_cast<Win32NoGUIPlatform*>(g_nogui_window.get());
+  Win32FrontendPlatform* platform = static_cast<Win32FrontendPlatform*>(g_frontend_window.get());
   if (hwnd != platform->m_hwnd && msg != WM_FUNC)
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 
@@ -326,7 +326,7 @@ LRESULT CALLBACK Win32NoGUIPlatform::WndProc(HWND hwnd, UINT msg, WPARAM wParam,
     {
       const u32 width = LOWORD(lParam);
       const u32 height = HIWORD(lParam);
-      NoGUIHost::ProcessPlatformWindowResize(width, height, platform->m_window_scale);
+      FrontendHost::ProcessPlatformWindowResize(width, height, platform->m_window_scale);
     }
     break;
 
@@ -334,7 +334,7 @@ LRESULT CALLBACK Win32NoGUIPlatform::WndProc(HWND hwnd, UINT msg, WPARAM wParam,
     case WM_KEYUP:
     {
       const bool pressed = (msg == WM_KEYDOWN);
-      NoGUIHost::ProcessPlatformKeyEvent(static_cast<s32>(wParam), pressed);
+      FrontendHost::ProcessPlatformKeyEvent(static_cast<s32>(wParam), pressed);
     }
     break;
 
@@ -349,7 +349,7 @@ LRESULT CALLBACK Win32NoGUIPlatform::WndProc(HWND hwnd, UINT msg, WPARAM wParam,
         if (utf8_len > 0)
         {
           utf8[utf8_len] = 0;
-          NoGUIHost::ProcessPlatformTextEvent(utf8);
+          FrontendHost::ProcessPlatformTextEvent(utf8);
         }
       }
     }
@@ -359,7 +359,7 @@ LRESULT CALLBACK Win32NoGUIPlatform::WndProc(HWND hwnd, UINT msg, WPARAM wParam,
     {
       const float x = static_cast<float>(static_cast<s16>(LOWORD(lParam)));
       const float y = static_cast<float>(static_cast<s16>(HIWORD(lParam)));
-      NoGUIHost::ProcessPlatformMouseMoveEvent(x, y);
+      FrontendHost::ProcessPlatformMouseMoveEvent(x, y);
     }
     break;
 
@@ -380,7 +380,7 @@ LRESULT CALLBACK Win32NoGUIPlatform::WndProc(HWND hwnd, UINT msg, WPARAM wParam,
       for (u32 i = 0; i < std::size(masks); i++)
       {
         if (changed & masks[i])
-          NoGUIHost::ProcessPlatformMouseButtonEvent(i, (buttons & masks[i]) != 0);
+          FrontendHost::ProcessPlatformMouseButtonEvent(i, (buttons & masks[i]) != 0);
       }
     }
     break;
@@ -390,16 +390,16 @@ LRESULT CALLBACK Win32NoGUIPlatform::WndProc(HWND hwnd, UINT msg, WPARAM wParam,
     {
       const float d =
         std::clamp(static_cast<float>(static_cast<s16>(HIWORD(wParam))) / static_cast<float>(WHEEL_DELTA), -1.0f, 1.0f);
-      NoGUIHost::ProcessPlatformMouseWheelEvent((msg == WM_MOUSEHWHEEL) ? d : 0.0f, (msg == WM_MOUSEWHEEL) ? d : 0.0f);
+      FrontendHost::ProcessPlatformMouseWheelEvent((msg == WM_MOUSEHWHEEL) ? d : 0.0f, (msg == WM_MOUSEWHEEL) ? d : 0.0f);
     }
     break;
 
     case WM_ACTIVATEAPP:
     {
       if (wParam)
-        NoGUIHost::PlatformWindowFocusGained();
+        FrontendHost::PlatformWindowFocusGained();
       else
-        NoGUIHost::PlatformWindowFocusLost();
+        FrontendHost::PlatformWindowFocusLost();
     }
     break;
 
@@ -414,7 +414,7 @@ LRESULT CALLBACK Win32NoGUIPlatform::WndProc(HWND hwnd, UINT msg, WPARAM wParam,
     case WM_DEVICECHANGE:
     {
       if (wParam == DBT_DEVNODES_CHANGED)
-        NoGUIHost::PlatformDevicesChanged();
+        FrontendHost::PlatformDevicesChanged();
     }
     break;
 
@@ -439,9 +439,9 @@ LRESULT CALLBACK Win32NoGUIPlatform::WndProc(HWND hwnd, UINT msg, WPARAM wParam,
   return 0;
 }
 
-std::unique_ptr<NoGUIPlatform> NoGUIPlatform::CreateWin32Platform()
+std::unique_ptr<FrontendPlatform> FrontendPlatform::CreateWin32Platform()
 {
-  std::unique_ptr<Win32NoGUIPlatform> ret(new Win32NoGUIPlatform());
+  std::unique_ptr<Win32FrontendPlatform> ret(new Win32FrontendPlatform());
   if (!ret->Initialize())
     return {};
 

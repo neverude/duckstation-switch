@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "nogui_platform.h"
+#include "frontend_platform.h"
 
 // Why do we have all these here instead of in the source?
 // Because X11 is a giant turd and #defines commonly used words.
@@ -12,8 +12,8 @@
 #include "common/string_util.h"
 #include "common/threading.h"
 #include "core/host.h"
-#include "nogui_host.h"
-#include "nogui_platform.h"
+#include "frontend_host.h"
+#include "frontend_platform.h"
 
 #include <atomic>
 #include <deque>
@@ -33,11 +33,11 @@
 #define _NET_WM_STATE_ADD 1
 #define _NET_WM_STATE_TOGGLE 2
 
-class X11NoGUIPlatform : public NoGUIPlatform
+class X11FrontendPlatform : public FrontendPlatform
 {
 public:
-  X11NoGUIPlatform();
-  ~X11NoGUIPlatform();
+  X11FrontendPlatform();
+  ~X11FrontendPlatform();
 
   bool Initialize();
 

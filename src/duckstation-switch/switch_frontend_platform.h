@@ -5,16 +5,16 @@
 #include <functional>
 #include <mutex>
 
-#include "nogui_host.h"
-#include "nogui_platform.h"
+#include "frontend_host.h"
+#include "frontend_platform.h"
 
 #include <switch.h>
 
-class SwitchNoGUIPlatform : public NoGUIPlatform
+class SwitchFrontendPlatform : public FrontendPlatform
 {
 public:
-  SwitchNoGUIPlatform();
-  ~SwitchNoGUIPlatform();
+  SwitchFrontendPlatform();
+  ~SwitchFrontendPlatform();
 
   bool Initialize();
 

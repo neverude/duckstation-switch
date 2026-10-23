@@ -70,10 +70,10 @@ BEGIN
             VALUE "CompanyName", "https://github.com/stenzek/duckstation"
             VALUE "FileDescription", "DuckStation PS1 Emulator"
             VALUE "FileVersion", "1.0.0.1"
-            VALUE "InternalName", "duckstation-nogui.exe"
+            VALUE "InternalName", "duckstation-switch.exe"
             VALUE "LegalCopyright", "Copyright (C) 2020 Stenzek and collaborators"
-            VALUE "OriginalFilename", "duckstation-nogui.exe"
-            VALUE "ProductName", "DuckStation NoGUI Frontend"
+            VALUE "OriginalFilename", "duckstation-switch.exe"
+            VALUE "ProductName", "DuckStation Switch Frontend"
             VALUE "ProductVersion", "1.0.0.1"
         END
     END
@@ -91,7 +91,7 @@ END
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-IDI_ICON1               ICON                    "duckstation-nogui.ico"
+IDI_ICON1               ICON                    "duckstation-switch.ico"
 
 #endif    // English (Australia) resources
 /////////////////////////////////////////////////////////////////////////////

@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2019-2024 Connor McLaughlin <stenzek@gmail.com>
 // SPDX-License-Identifier: (GPL-3.0 OR CC-BY-NC-ND-4.0)
 
-#include "sdl_nogui_platform.h"
-#include "nogui_host.h"
+#include "sdl_frontend_platform.h"
+#include "frontend_host.h"
 #include "sdl_key_names.h"
 
 #include "core/host.h"
@@ -18,21 +18,21 @@
 #include <SDL.h>
 #include <SDL_syswm.h>
 
-Log_SetChannel(SDLNoGUIPlatform);
+Log_SetChannel(SDLFrontendPlatform);
 
 static constexpr float DEFAULT_WINDOW_DPI = 96.0f;
 
-SDLNoGUIPlatform::SDLNoGUIPlatform()
+SDLFrontendPlatform::SDLFrontendPlatform()
 {
   m_message_loop_running.store(true, std::memory_order_release);
 }
 
-SDLNoGUIPlatform::~SDLNoGUIPlatform()
+SDLFrontendPlatform::~SDLFrontendPlatform()
 {
   SDL_QuitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 }
 
-bool SDLNoGUIPlatform::Initialize()
+bool SDLFrontendPlatform::Initialize()
 {
   if (SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0)
   {
@@ -56,12 +56,12 @@ bool SDLNoGUIPlatform::Initialize()
   return true;
 }
 
-void SDLNoGUIPlatform::ReportError(const std::string_view& title, const std::string_view& message)
+void SDLFrontendPlatform::ReportError(const std::string_view& title, const std::string_view& message)
 {
   SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, SmallString(title).c_str(), SmallString(message).c_str(), m_window);
 }
 
-bool SDLNoGUIPlatform::ConfirmMessage(const std::string_view& title, const std::string_view& message)
+bool SDLFrontendPlatform::ConfirmMessage(const std::string_view& title, const std::string_view& message)
 {
   const SmallString title_copy(title);
   const SmallString message_copy(message);
@@ -83,15 +83,15 @@ bool SDLNoGUIPlatform::ConfirmMessage(const std::string_view& title, const std::
   return (buttonid == 1);
 }
 
-void SDLNoGUIPlatform::SetDefaultConfig(SettingsInterface& si)
+void SDLFrontendPlatform::SetDefaultConfig(SettingsInterface& si)
 {
   // noop
 }
 
-bool SDLNoGUIPlatform::CreatePlatformWindow(std::string title)
+bool SDLFrontendPlatform::CreatePlatformWindow(std::string title)
 {
   s32 window_x, window_y, window_width, window_height;
-  if (!NoGUIHost::GetSavedPlatformWindowGeometry(&window_x, &window_y, &window_width, &window_height))
+  if (!FrontendHost::GetSavedPlatformWindowGeometry(&window_x, &window_y, &window_width, &window_height))
   {
     window_x = SDL_WINDOWPOS_UNDEFINED;
     window_y = SDL_WINDOWPOS_UNDEFINED;
@@ -115,12 +115,12 @@ bool SDLNoGUIPlatform::CreatePlatformWindow(std::string title)
   return true;
 }
 
-bool SDLNoGUIPlatform::HasPlatformWindow() const
+bool SDLFrontendPlatform::HasPlatformWindow() const
 {
   return (m_window != nullptr);
 }
 
-void SDLNoGUIPlatform::DestroyPlatformWindow()
+void SDLFrontendPlatform::DestroyPlatformWindow()
 {
   if (!m_window)
     return;
@@ -131,14 +131,14 @@ void SDLNoGUIPlatform::DestroyPlatformWindow()
     int window_width = DEFAULT_WINDOW_WIDTH, window_height = DEFAULT_WINDOW_HEIGHT;
     SDL_GetWindowPosition(m_window, &window_x, &window_y);
     SDL_GetWindowSize(m_window, &window_width, &window_height);
-    NoGUIHost::SavePlatformWindowGeometry(window_x, window_y, window_width, window_height);
+    FrontendHost::SavePlatformWindowGeometry(window_x, window_y, window_width, window_height);
   }
 
   SDL_DestroyWindow(m_window);
   m_window = nullptr;
 }
 
-std::optional<WindowInfo> SDLNoGUIPlatform::GetPlatformWindowInfo()
+std::optional<WindowInfo> SDLFrontendPlatform::GetPlatformWindowInfo()
 {
   if (!m_window)
     return std::nullopt;
@@ -210,7 +210,7 @@ std::optional<WindowInfo> SDLNoGUIPlatform::GetPlatformWindowInfo()
   return wi;
 }
 
-void SDLNoGUIPlatform::SetPlatformWindowTitle(std::string title)
+void SDLFrontendPlatform::SetPlatformWindowTitle(std::string title)
 {
   if (!m_window)
     return;
@@ -218,20 +218,20 @@ void SDLNoGUIPlatform::SetPlatformWindowTitle(std::string title)
   SDL_SetWindowTitle(m_window, title.c_str());
 }
 
-std::optional<u32> SDLNoGUIPlatform::ConvertHostKeyboardStringToCode(const std::string_view& str)
+std::optional<u32> SDLFrontendPlatform::ConvertHostKeyboardStringToCode(const std::string_view& str)
 {
   std::optional<DWORD> converted(SDLKeyNames::GetKeyCodeForName(str));
   return converted.has_value() ? std::optional<u32>(static_cast<u32>(converted.value())) : std::nullopt;
   return std::nullopt;
 }
 
-std::optional<std::string> SDLNoGUIPlatform::ConvertHostKeyboardCodeToString(u32 code)
+std::optional<std::string> SDLFrontendPlatform::ConvertHostKeyboardCodeToString(u32 code)
 {
   const char* converted = SDLKeyNames::GetKeyName(code);
   return converted ? std::optional<std::string>(converted) : std::nullopt;
 }
 
-void SDLNoGUIPlatform::RunMessageLoop()
+void SDLFrontendPlatform::RunMessageLoop()
 {
   while (m_message_loop_running.load(std::memory_order_acquire))
   {
@@ -243,7 +243,7 @@ void SDLNoGUIPlatform::RunMessageLoop()
   }
 }
 
-void SDLNoGUIPlatform::ExecuteInMessageLoop(std::function<void()> func)
+void SDLFrontendPlatform::ExecuteInMessageLoop(std::function<void()> func)
 {
   std::function<void()>* pfunc = new std::function<void()>(std::move(func));
 
@@ -254,7 +254,7 @@ void SDLNoGUIPlatform::ExecuteInMessageLoop(std::function<void()> func)
   SDL_PushEvent(&ev);
 }
 
-void SDLNoGUIPlatform::QuitMessageLoop()
+void SDLFrontendPlatform::QuitMessageLoop()
 {
   m_message_loop_running.store(false, std::memory_order_release);
 
@@ -264,7 +264,7 @@ void SDLNoGUIPlatform::QuitMessageLoop()
   SDL_PushEvent(&ev);
 }
 
-void SDLNoGUIPlatform::SetFullscreen(bool enabled)
+void SDLFrontendPlatform::SetFullscreen(bool enabled)
 {
   if (!m_window || m_fullscreen.load(std::memory_order_acquire) == enabled)
     return;
@@ -278,7 +278,7 @@ void SDLNoGUIPlatform::SetFullscreen(bool enabled)
   m_fullscreen.store(enabled, std::memory_order_release);
 }
 
-bool SDLNoGUIPlatform::RequestRenderWindowSize(s32 new_window_width, s32 new_window_height)
+bool SDLFrontendPlatform::RequestRenderWindowSize(s32 new_window_width, s32 new_window_height)
 {
   if (!m_window || m_fullscreen.load(std::memory_order_acquire))
     return false;
@@ -287,7 +287,7 @@ bool SDLNoGUIPlatform::RequestRenderWindowSize(s32 new_window_width, s32 new_win
   return true;
 }
 
-bool SDLNoGUIPlatform::OpenURL(const std::string_view& url)
+bool SDLFrontendPlatform::OpenURL(const std::string_view& url)
 {
   if (SDL_OpenURL(SmallString(url).c_str()) != 0)
   {
@@ -298,7 +298,7 @@ bool SDLNoGUIPlatform::OpenURL(const std::string_view& url)
   return true;
 }
 
-bool SDLNoGUIPlatform::CopyTextToClipboard(const std::string_view& text)
+bool SDLFrontendPlatform::CopyTextToClipboard(const std::string_view& text)
 {
   if (SDL_SetClipboardText(SmallString(text).c_str()) != 0)
   {
@@ -309,7 +309,7 @@ bool SDLNoGUIPlatform::CopyTextToClipboard(const std::string_view& text)
   return true;
 }
 
-void SDLNoGUIPlatform::ProcessEvent(const SDL_Event* ev)
+void SDLFrontendPlatform::ProcessEvent(const SDL_Event* ev)
 {
   switch (ev->type)
   {
@@ -321,7 +321,7 @@ void SDLNoGUIPlatform::ProcessEvent(const SDL_Event* ev)
         {
           int window_width = ev->window.data1, window_height = ev->window.data2;
           SDL_GetWindowSizeInPixels(m_window, &window_width, &window_height);
-          NoGUIHost::ProcessPlatformWindowResize(window_width, window_height, m_window_scale);
+          FrontendHost::ProcessPlatformWindowResize(window_width, window_height, m_window_scale);
         }
         break;
 
@@ -337,7 +337,7 @@ void SDLNoGUIPlatform::ProcessEvent(const SDL_Event* ev)
 
               int window_width = 1, window_height = 1;
               SDL_GetWindowSizeInPixels(m_window, &window_width, &window_height);
-              NoGUIHost::ProcessPlatformWindowResize(window_width, window_height, m_window_scale);
+              FrontendHost::ProcessPlatformWindowResize(window_width, window_height, m_window_scale);
             }
           }
         }
@@ -351,13 +351,13 @@ void SDLNoGUIPlatform::ProcessEvent(const SDL_Event* ev)
 
         case SDL_WINDOWEVENT_FOCUS_GAINED:
         {
-          NoGUIHost::PlatformWindowFocusGained();
+          FrontendHost::PlatformWindowFocusGained();
         }
         break;
 
         case SDL_WINDOWEVENT_FOCUS_LOST:
         {
-          NoGUIHost::PlatformWindowFocusLost();
+          FrontendHost::PlatformWindowFocusLost();
         }
         break;
 
@@ -371,14 +371,14 @@ void SDLNoGUIPlatform::ProcessEvent(const SDL_Event* ev)
     case SDL_KEYUP:
     {
       const bool pressed = (ev->type == SDL_KEYDOWN);
-      NoGUIHost::ProcessPlatformKeyEvent(static_cast<s32>(ev->key.keysym.sym), pressed);
+      FrontendHost::ProcessPlatformKeyEvent(static_cast<s32>(ev->key.keysym.sym), pressed);
     }
     break;
 
     case SDL_TEXTINPUT:
     {
       if (ImGuiManager::WantsTextInput())
-        NoGUIHost::ProcessPlatformTextEvent(ev->text.text);
+        FrontendHost::ProcessPlatformTextEvent(ev->text.text);
     }
     break;
 
@@ -386,7 +386,7 @@ void SDLNoGUIPlatform::ProcessEvent(const SDL_Event* ev)
     {
       const float x = static_cast<float>(ev->motion.x);
       const float y = static_cast<float>(ev->motion.y);
-      NoGUIHost::ProcessPlatformMouseMoveEvent(x, y);
+      FrontendHost::ProcessPlatformMouseMoveEvent(x, y);
     }
     break;
 
@@ -395,13 +395,13 @@ void SDLNoGUIPlatform::ProcessEvent(const SDL_Event* ev)
     {
       const bool pressed = (ev->type == SDL_MOUSEBUTTONDOWN);
       if (ev->button.button > 0)
-        NoGUIHost::ProcessPlatformMouseButtonEvent(ev->button.button - 1, pressed);
+        FrontendHost::ProcessPlatformMouseButtonEvent(ev->button.button - 1, pressed);
     }
     break;
 
     case SDL_MOUSEWHEEL:
     {
-      NoGUIHost::ProcessPlatformMouseWheelEvent(ev->wheel.preciseX, ev->wheel.preciseY);
+      FrontendHost::ProcessPlatformMouseWheelEvent(ev->wheel.preciseX, ev->wheel.preciseY);
     }
     break;
 
@@ -439,9 +439,9 @@ void SDLNoGUIPlatform::ProcessEvent(const SDL_Event* ev)
   }
 }
 
-std::unique_ptr<NoGUIPlatform> NoGUIPlatform::CreateSDLPlatform()
+std::unique_ptr<FrontendPlatform> FrontendPlatform::CreateSDLPlatform()
 {
-  std::unique_ptr<SDLNoGUIPlatform> ret(new SDLNoGUIPlatform());
+  std::unique_ptr<SDLFrontendPlatform> ret(new SDLFrontendPlatform());
   if (!ret->Initialize())
     return {};
 

@@ -1,28 +1,28 @@
 // SPDX-FileCopyrightText: 2019-2022 Connor McLaughlin <stenzek@gmail.com>
 // SPDX-License-Identifier: (GPL-3.0 OR CC-BY-NC-ND-4.0)
 
-#include "wayland_nogui_platform.h"
+#include "wayland_frontend_platform.h"
 #include "common/assert.h"
 #include "common/log.h"
 #include "common/string_util.h"
 #include "common/threading.h"
 #include "core/host.h"
-#include "nogui_host.h"
-#include "nogui_platform.h"
+#include "frontend_host.h"
+#include "frontend_platform.h"
 
 #include <linux/input-event-codes.h>
 #include <sys/mman.h>
 #include <thread>
 #include <unistd.h>
 
-Log_SetChannel(WaylandNoGUIPlatform);
+Log_SetChannel(WaylandFrontendPlatform);
 
-WaylandNoGUIPlatform::WaylandNoGUIPlatform()
+WaylandFrontendPlatform::WaylandFrontendPlatform()
 {
   m_message_loop_running.store(true, std::memory_order_release);
 }
 
-WaylandNoGUIPlatform::~WaylandNoGUIPlatform()
+WaylandFrontendPlatform::~WaylandFrontendPlatform()
 {
   if (m_xkb_state)
     xkb_state_unref(m_xkb_state);
@@ -40,7 +40,7 @@ WaylandNoGUIPlatform::~WaylandNoGUIPlatform()
     wl_registry_destroy(m_registry);
 }
 
-bool WaylandNoGUIPlatform::Initialize()
+bool WaylandFrontendPlatform::Initialize()
 {
   m_xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
   if (!m_xkb_context)
@@ -78,23 +78,23 @@ bool WaylandNoGUIPlatform::Initialize()
   return true;
 }
 
-void WaylandNoGUIPlatform::ReportError(const std::string_view& title, const std::string_view& message)
+void WaylandFrontendPlatform::ReportError(const std::string_view& title, const std::string_view& message)
 {
   // not implemented
 }
 
-bool WaylandNoGUIPlatform::ConfirmMessage(const std::string_view& title, const std::string_view& message)
+bool WaylandFrontendPlatform::ConfirmMessage(const std::string_view& title, const std::string_view& message)
 {
   // not implemented
   return true;
 }
 
-void WaylandNoGUIPlatform::SetDefaultConfig(SettingsInterface& si) {}
+void WaylandFrontendPlatform::SetDefaultConfig(SettingsInterface& si) {}
 
-bool WaylandNoGUIPlatform::CreatePlatformWindow(std::string title)
+bool WaylandFrontendPlatform::CreatePlatformWindow(std::string title)
 {
   s32 window_x, window_y, window_width, window_height;
-  bool has_window_pos = NoGUIHost::GetSavedPlatformWindowGeometry(&window_x, &window_y, &window_width, &window_height);
+  bool has_window_pos = FrontendHost::GetSavedPlatformWindowGeometry(&window_x, &window_y, &window_width, &window_height);
   if (!has_window_pos)
   {
     window_x = 0;
@@ -149,12 +149,12 @@ bool WaylandNoGUIPlatform::CreatePlatformWindow(std::string title)
   return true;
 }
 
-bool WaylandNoGUIPlatform::HasPlatformWindow() const
+bool WaylandFrontendPlatform::HasPlatformWindow() const
 {
   return (m_surface != nullptr);
 }
 
-void WaylandNoGUIPlatform::DestroyPlatformWindow()
+void WaylandFrontendPlatform::DestroyPlatformWindow()
 {
   m_window_info = {};
 
@@ -186,7 +186,7 @@ void WaylandNoGUIPlatform::DestroyPlatformWindow()
   wl_display_roundtrip(m_display);
 }
 
-std::optional<WindowInfo> WaylandNoGUIPlatform::GetPlatformWindowInfo()
+std::optional<WindowInfo> WaylandFrontendPlatform::GetPlatformWindowInfo()
 {
   if (m_window_info.type == WindowInfo::Type::Wayland)
     return m_window_info;
@@ -194,13 +194,13 @@ std::optional<WindowInfo> WaylandNoGUIPlatform::GetPlatformWindowInfo()
     return std::nullopt;
 }
 
-void WaylandNoGUIPlatform::SetPlatformWindowTitle(std::string title)
+void WaylandFrontendPlatform::SetPlatformWindowTitle(std::string title)
 {
   if (m_xdg_toplevel)
     xdg_toplevel_set_title(m_xdg_toplevel, title.c_str());
 }
 
-std::optional<u32> WaylandNoGUIPlatform::ConvertHostKeyboardStringToCode(const std::string_view& str)
+std::optional<u32> WaylandFrontendPlatform::ConvertHostKeyboardStringToCode(const std::string_view& str)
 {
   std::unique_lock lock(m_key_map_mutex);
   for (const auto& it : m_key_map)
@@ -212,17 +212,17 @@ std::optional<u32> WaylandNoGUIPlatform::ConvertHostKeyboardStringToCode(const s
   return std::nullopt;
 }
 
-std::optional<std::string> WaylandNoGUIPlatform::ConvertHostKeyboardCodeToString(u32 code)
+std::optional<std::string> WaylandFrontendPlatform::ConvertHostKeyboardCodeToString(u32 code)
 {
   std::unique_lock lock(m_key_map_mutex);
   const auto it = m_key_map.find(static_cast<s32>(code));
   return (it != m_key_map.end()) ? std::optional<std::string>(it->second) : std::nullopt;
 }
 
-void WaylandNoGUIPlatform::GlobalRegistryHandler(void* data, wl_registry* registry, uint32_t id, const char* interface,
+void WaylandFrontendPlatform::GlobalRegistryHandler(void* data, wl_registry* registry, uint32_t id, const char* interface,
                                                  uint32_t version)
 {
-  WaylandNoGUIPlatform* platform = static_cast<WaylandNoGUIPlatform*>(data);
+  WaylandFrontendPlatform* platform = static_cast<WaylandFrontendPlatform*>(data);
   if (std::strcmp(interface, wl_compositor_interface.name) == 0)
   {
     platform->m_compositor =
@@ -240,67 +240,67 @@ void WaylandNoGUIPlatform::GlobalRegistryHandler(void* data, wl_registry* regist
   }
   else if (std::strcmp(interface, wl_seat_interface.name) == 0)
   {
-    static const wl_seat_listener seat_listener = {&WaylandNoGUIPlatform::SeatCapabilities};
+    static const wl_seat_listener seat_listener = {&WaylandFrontendPlatform::SeatCapabilities};
     platform->m_wl_seat = static_cast<wl_seat*>(wl_registry_bind(registry, id, &wl_seat_interface, 1));
     wl_seat_add_listener(platform->m_wl_seat, &seat_listener, platform);
   }
 }
 
-void WaylandNoGUIPlatform::GlobalRegistryRemover(void* data, wl_registry* registry, uint32_t id) {}
+void WaylandFrontendPlatform::GlobalRegistryRemover(void* data, wl_registry* registry, uint32_t id) {}
 
-void WaylandNoGUIPlatform::XDGWMBasePing(void* data, struct xdg_wm_base* xdg_wm_base, uint32_t serial)
+void WaylandFrontendPlatform::XDGWMBasePing(void* data, struct xdg_wm_base* xdg_wm_base, uint32_t serial)
 {
   xdg_wm_base_pong(xdg_wm_base, serial);
 }
 
-void WaylandNoGUIPlatform::XDGSurfaceConfigure(void* data, struct xdg_surface* xdg_surface, uint32_t serial)
+void WaylandFrontendPlatform::XDGSurfaceConfigure(void* data, struct xdg_surface* xdg_surface, uint32_t serial)
 {
   xdg_surface_ack_configure(xdg_surface, serial);
 }
 
-void WaylandNoGUIPlatform::TopLevelConfigure(void* data, struct xdg_toplevel* xdg_toplevel, int32_t width,
+void WaylandFrontendPlatform::TopLevelConfigure(void* data, struct xdg_toplevel* xdg_toplevel, int32_t width,
                                              int32_t height, struct wl_array* states)
 {
   // If this is zero, it's asking us to set the size.
   if (width == 0 || height == 0)
     return;
 
-  WaylandNoGUIPlatform* platform = static_cast<WaylandNoGUIPlatform*>(data);
+  WaylandFrontendPlatform* platform = static_cast<WaylandFrontendPlatform*>(data);
   platform->m_window_info.surface_width = width;
   platform->m_window_info.surface_height = height;
 
-  NoGUIHost::ProcessPlatformWindowResize(width, height, platform->m_window_info.surface_scale);
+  FrontendHost::ProcessPlatformWindowResize(width, height, platform->m_window_info.surface_scale);
 }
 
-void WaylandNoGUIPlatform::TopLevelClose(void* data, struct xdg_toplevel* xdg_toplevel)
+void WaylandFrontendPlatform::TopLevelClose(void* data, struct xdg_toplevel* xdg_toplevel)
 {
   Host::RunOnCPUThread([]() { Host::RequestExit(false); });
 }
 
-void WaylandNoGUIPlatform::SeatCapabilities(void* data, wl_seat* seat, uint32_t capabilities)
+void WaylandFrontendPlatform::SeatCapabilities(void* data, wl_seat* seat, uint32_t capabilities)
 {
-  WaylandNoGUIPlatform* platform = static_cast<WaylandNoGUIPlatform*>(data);
+  WaylandFrontendPlatform* platform = static_cast<WaylandFrontendPlatform*>(data);
   if (capabilities & WL_SEAT_CAPABILITY_KEYBOARD)
   {
     static const wl_keyboard_listener keyboard_listener = {
-      &WaylandNoGUIPlatform::KeyboardKeymap, &WaylandNoGUIPlatform::KeyboardEnter, &WaylandNoGUIPlatform::KeyboardLeave,
-      &WaylandNoGUIPlatform::KeyboardKey, &WaylandNoGUIPlatform::KeyboardModifiers};
+      &WaylandFrontendPlatform::KeyboardKeymap, &WaylandFrontendPlatform::KeyboardEnter, &WaylandFrontendPlatform::KeyboardLeave,
+      &WaylandFrontendPlatform::KeyboardKey, &WaylandFrontendPlatform::KeyboardModifiers};
     platform->m_wl_keyboard = wl_seat_get_keyboard(seat);
     wl_keyboard_add_listener(platform->m_wl_keyboard, &keyboard_listener, platform);
   }
   if (capabilities & WL_SEAT_CAPABILITY_POINTER)
   {
     static const wl_pointer_listener pointer_listener = {
-      &WaylandNoGUIPlatform::PointerEnter, &WaylandNoGUIPlatform::PointerLeave, &WaylandNoGUIPlatform::PointerMotion,
-      &WaylandNoGUIPlatform::PointerButton, &WaylandNoGUIPlatform::PointerAxis};
+      &WaylandFrontendPlatform::PointerEnter, &WaylandFrontendPlatform::PointerLeave, &WaylandFrontendPlatform::PointerMotion,
+      &WaylandFrontendPlatform::PointerButton, &WaylandFrontendPlatform::PointerAxis};
     platform->m_wl_pointer = wl_seat_get_pointer(seat);
     wl_pointer_add_listener(platform->m_wl_pointer, &pointer_listener, platform);
   }
 }
 
-void WaylandNoGUIPlatform::KeyboardKeymap(void* data, wl_keyboard* keyboard, uint32_t format, int32_t fd, uint32_t size)
+void WaylandFrontendPlatform::KeyboardKeymap(void* data, wl_keyboard* keyboard, uint32_t format, int32_t fd, uint32_t size)
 {
-  WaylandNoGUIPlatform* platform = static_cast<WaylandNoGUIPlatform*>(data);
+  WaylandFrontendPlatform* platform = static_cast<WaylandFrontendPlatform*>(data);
   char* keymap_string = static_cast<char*>(mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0));
   if (platform->m_xkb_keymap)
     xkb_keymap_unref(platform->m_xkb_keymap);
@@ -316,7 +316,7 @@ void WaylandNoGUIPlatform::KeyboardKeymap(void* data, wl_keyboard* keyboard, uin
   platform->InitializeKeyMap();
 }
 
-void WaylandNoGUIPlatform::InitializeKeyMap()
+void WaylandFrontendPlatform::InitializeKeyMap()
 {
   m_key_map.clear();
   Log_VerbosePrintf("Init keymap");
@@ -362,44 +362,44 @@ void WaylandNoGUIPlatform::InitializeKeyMap()
   }
 }
 
-void WaylandNoGUIPlatform::KeyboardEnter(void* data, wl_keyboard* keyboard, uint32_t serial, wl_surface* surface,
+void WaylandFrontendPlatform::KeyboardEnter(void* data, wl_keyboard* keyboard, uint32_t serial, wl_surface* surface,
                                          wl_array* keys)
 {
 }
 
-void WaylandNoGUIPlatform::KeyboardLeave(void* data, wl_keyboard* keyboard, uint32_t serial, wl_surface* surface) {}
+void WaylandFrontendPlatform::KeyboardLeave(void* data, wl_keyboard* keyboard, uint32_t serial, wl_surface* surface) {}
 
-void WaylandNoGUIPlatform::KeyboardKey(void* data, wl_keyboard* keyboard, uint32_t serial, uint32_t time, uint32_t key,
+void WaylandFrontendPlatform::KeyboardKey(void* data, wl_keyboard* keyboard, uint32_t serial, uint32_t time, uint32_t key,
                                        uint32_t state)
 {
   const xkb_keycode_t keycode = static_cast<xkb_keycode_t>(key + 8);
   const bool pressed = (state == WL_KEYBOARD_KEY_STATE_PRESSED);
-  NoGUIHost::ProcessPlatformKeyEvent(static_cast<s32>(keycode), pressed);
+  FrontendHost::ProcessPlatformKeyEvent(static_cast<s32>(keycode), pressed);
 }
 
-void WaylandNoGUIPlatform::KeyboardModifiers(void* data, wl_keyboard* keyboard, uint32_t serial,
+void WaylandFrontendPlatform::KeyboardModifiers(void* data, wl_keyboard* keyboard, uint32_t serial,
                                              uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked,
                                              uint32_t group)
 {
-  WaylandNoGUIPlatform* platform = static_cast<WaylandNoGUIPlatform*>(data);
+  WaylandFrontendPlatform* platform = static_cast<WaylandFrontendPlatform*>(data);
   xkb_state_update_mask(platform->m_xkb_state, mods_depressed, mods_latched, mods_locked, 0, 0, group);
 }
 
-void WaylandNoGUIPlatform::PointerEnter(void* data, wl_pointer* pointer, uint32_t serial, wl_surface* surface,
+void WaylandFrontendPlatform::PointerEnter(void* data, wl_pointer* pointer, uint32_t serial, wl_surface* surface,
                                         wl_fixed_t surface_x, wl_fixed_t surface_y)
 {
 }
 
-void WaylandNoGUIPlatform::PointerLeave(void* data, wl_pointer* pointer, uint32_t serial, wl_surface* surface) {}
+void WaylandFrontendPlatform::PointerLeave(void* data, wl_pointer* pointer, uint32_t serial, wl_surface* surface) {}
 
-void WaylandNoGUIPlatform::PointerMotion(void* data, wl_pointer* pointer, uint32_t time, wl_fixed_t x, wl_fixed_t y)
+void WaylandFrontendPlatform::PointerMotion(void* data, wl_pointer* pointer, uint32_t time, wl_fixed_t x, wl_fixed_t y)
 {
   const float pos_x = static_cast<float>(wl_fixed_to_double(x));
   const float pos_y = static_cast<float>(wl_fixed_to_double(y));
-  NoGUIHost::ProcessPlatformMouseMoveEvent(static_cast<int>(pos_x), static_cast<int>(pos_y));
+  FrontendHost::ProcessPlatformMouseMoveEvent(static_cast<int>(pos_x), static_cast<int>(pos_y));
 }
 
-void WaylandNoGUIPlatform::PointerButton(void* data, wl_pointer* pointer, uint32_t serial, uint32_t time,
+void WaylandFrontendPlatform::PointerButton(void* data, wl_pointer* pointer, uint32_t serial, uint32_t time,
                                          uint32_t button, uint32_t state)
 {
   if (button < BTN_MOUSE || (button - BTN_MOUSE) >= 32)
@@ -407,17 +407,17 @@ void WaylandNoGUIPlatform::PointerButton(void* data, wl_pointer* pointer, uint32
 
   const s32 button_index = (button - BTN_MOUSE);
   const bool button_pressed = (state == WL_POINTER_BUTTON_STATE_PRESSED);
-  NoGUIHost::ProcessPlatformMouseButtonEvent(button_index, button_pressed);
+  FrontendHost::ProcessPlatformMouseButtonEvent(button_index, button_pressed);
 }
 
-void WaylandNoGUIPlatform::PointerAxis(void* data, wl_pointer* pointer, uint32_t time, uint32_t axis, wl_fixed_t value)
+void WaylandFrontendPlatform::PointerAxis(void* data, wl_pointer* pointer, uint32_t time, uint32_t axis, wl_fixed_t value)
 {
   const float x = (axis == 1) ? std::clamp(static_cast<float>(wl_fixed_to_double(value)), -1.0f, 1.0f) : 0.0f;
   const float y = (axis == 0) ? std::clamp(static_cast<float>(-wl_fixed_to_double(value)), -1.0f, 1.0f) : 0.0f;
-  NoGUIHost::ProcessPlatformMouseWheelEvent(x, y);
+  FrontendHost::ProcessPlatformMouseWheelEvent(x, y);
 }
 
-void WaylandNoGUIPlatform::RunMessageLoop()
+void WaylandFrontendPlatform::RunMessageLoop()
 {
   while (m_message_loop_running.load(std::memory_order_acquire))
   {
@@ -440,42 +440,42 @@ void WaylandNoGUIPlatform::RunMessageLoop()
   }
 }
 
-void WaylandNoGUIPlatform::ExecuteInMessageLoop(std::function<void()> func)
+void WaylandFrontendPlatform::ExecuteInMessageLoop(std::function<void()> func)
 {
   std::unique_lock lock(m_callback_queue_mutex);
   m_callback_queue.push_back(std::move(func));
 }
 
-void WaylandNoGUIPlatform::QuitMessageLoop()
+void WaylandFrontendPlatform::QuitMessageLoop()
 {
   m_message_loop_running.store(false, std::memory_order_release);
 }
 
-void WaylandNoGUIPlatform::SetFullscreen(bool enabled)
+void WaylandFrontendPlatform::SetFullscreen(bool enabled)
 {
   // how the heck can we do this?
 }
 
-bool WaylandNoGUIPlatform::RequestRenderWindowSize(s32 new_window_width, s32 new_window_height)
+bool WaylandFrontendPlatform::RequestRenderWindowSize(s32 new_window_width, s32 new_window_height)
 {
   return false;
 }
 
-bool WaylandNoGUIPlatform::OpenURL(const std::string_view& url)
+bool WaylandFrontendPlatform::OpenURL(const std::string_view& url)
 {
-  Log_ErrorPrintf("WaylandNoGUIPlatform::OpenURL() not implemented: %.*s", static_cast<int>(url.size()), url.data());
+  Log_ErrorPrintf("WaylandFrontendPlatform::OpenURL() not implemented: %.*s", static_cast<int>(url.size()), url.data());
   return false;
 }
 
-bool WaylandNoGUIPlatform::CopyTextToClipboard(const std::string_view& text)
+bool WaylandFrontendPlatform::CopyTextToClipboard(const std::string_view& text)
 {
-  Log_ErrorPrintf("WaylandNoGUIPlatform::CopyTextToClipboard() not implemented: %.*s", static_cast<int>(text.size()), text.data());
+  Log_ErrorPrintf("WaylandFrontendPlatform::CopyTextToClipboard() not implemented: %.*s", static_cast<int>(text.size()), text.data());
   return false;
 }
 
-std::unique_ptr<NoGUIPlatform> NoGUIPlatform::CreateWaylandPlatform()
+std::unique_ptr<FrontendPlatform> FrontendPlatform::CreateWaylandPlatform()
 {
-  std::unique_ptr<WaylandNoGUIPlatform> ret = std::unique_ptr<WaylandNoGUIPlatform>(new WaylandNoGUIPlatform());
+  std::unique_ptr<WaylandFrontendPlatform> ret = std::unique_ptr<WaylandFrontendPlatform>(new WaylandFrontendPlatform());
   if (!ret->Initialize())
     return {};
 

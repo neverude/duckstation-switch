@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2019-2023 Connor McLaughlin <stenzek@gmail.com>
+// SPDX-FileCopyrightText: 2019-2024 Connor McLaughlin <stenzek@gmail.com>
 // SPDX-License-Identifier: (GPL-3.0 OR CC-BY-NC-ND-4.0)
 
 #pragma once
@@ -7,13 +7,15 @@
 
 #include "common/windows_headers.h"
 
-#include "nogui_platform.h"
+#include "frontend_platform.h"
 
-class Win32NoGUIPlatform : public NoGUIPlatform
+#include <SDL.h>
+
+class SDLFrontendPlatform : public FrontendPlatform
 {
 public:
-  Win32NoGUIPlatform();
-  ~Win32NoGUIPlatform();
+  SDLFrontendPlatform();
+  ~SDLFrontendPlatform();
 
   bool Initialize();
 
@@ -43,25 +45,13 @@ public:
   bool CopyTextToClipboard(const std::string_view& text) override;
 
 private:
-  enum : u32
-  {
-    WM_FIRST = WM_USER + 1337,
-    WM_FUNC = WM_FIRST,
-    WM_WAKEUP,
-    WM_LAST = WM_WAKEUP
-  };
+  void ProcessEvent(const SDL_Event* ev);
 
-  static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
-  HWND m_hwnd{};
-  DWORD m_window_thread_id = 0;
-  RECT m_windowed_rect = {};
+  SDL_Window* m_window = nullptr;
   float m_window_scale = 1.0f;
+  u32 m_func_event_id = 0;
+  u32 m_wakeup_event_id = 0;
 
   std::atomic_bool m_message_loop_running{false};
   std::atomic_bool m_fullscreen{false};
-
-  DWORD m_last_mouse_buttons = 0;
-
-  HDEVNOTIFY m_dev_notify_handle = NULL;
 };

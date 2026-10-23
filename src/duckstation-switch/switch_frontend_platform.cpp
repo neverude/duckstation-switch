@@ -1,4 +1,4 @@
-#include "switch_nogui_platform.h"
+#include "switch_frontend_platform.h"
 
 #include "core/host.h"
 
@@ -10,7 +10,7 @@
 
 #include <switch.h>
 
-Log_SetChannel(SwitchNoGUIPlatform);
+Log_SetChannel(SwitchFrontendPlatform);
 
 namespace Common::PageFaultHandler {
 bool PageFaultHandler(ExceptionFrameA64* ctx);
@@ -89,26 +89,26 @@ void switch_exception_handler(Result reason, ExceptionFrameA64* frame, u64 fp)
 }
 }
 
-std::unique_ptr<NoGUIPlatform> NoGUIPlatform::CreateSwitchPlatform()
+std::unique_ptr<FrontendPlatform> FrontendPlatform::CreateSwitchPlatform()
 {
-  std::unique_ptr<SwitchNoGUIPlatform> platform(std::make_unique<SwitchNoGUIPlatform>());
+  std::unique_ptr<SwitchFrontendPlatform> platform(std::make_unique<SwitchFrontendPlatform>());
   if (!platform->Initialize())
     platform.reset();
   return platform;
 }
 
-SwitchNoGUIPlatform::SwitchNoGUIPlatform()
+SwitchFrontendPlatform::SwitchFrontendPlatform()
 {
   m_message_loop_running.store(true, std::memory_order_release);
 }
 
-SwitchNoGUIPlatform::~SwitchNoGUIPlatform()
+SwitchFrontendPlatform::~SwitchFrontendPlatform()
 {
   // The hook holds a pointer to this object, do not leave it registered.
   appletUnhook(&m_applet_cookie);
 }
 
-void SwitchNoGUIPlatform::AppletModeChange(AppletHookType type)
+void SwitchFrontendPlatform::AppletModeChange(AppletHookType type)
 {
   switch (type)
   {
@@ -116,7 +116,7 @@ void SwitchNoGUIPlatform::AppletModeChange(AppletHookType type)
     {
       std::optional<WindowInfo> wi = GetPlatformWindowInfo();
       nwindowSetDimensions(nwindowGetDefault(), wi->surface_width, wi->surface_height);
-      NoGUIHost::ProcessPlatformWindowResize(wi->surface_width, wi->surface_height, wi->surface_scale);
+      FrontendHost::ProcessPlatformWindowResize(wi->surface_width, wi->surface_height, wi->surface_scale);
       break;
     }
     default:
@@ -126,10 +126,10 @@ void SwitchNoGUIPlatform::AppletModeChange(AppletHookType type)
 
 static void AppletModeChange(AppletHookType type, void* host_interface)
 {
-  static_cast<SwitchNoGUIPlatform*>(host_interface)->AppletModeChange(type);
+  static_cast<SwitchFrontendPlatform*>(host_interface)->AppletModeChange(type);
 }
 
-bool SwitchNoGUIPlatform::Initialize()
+bool SwitchFrontendPlatform::Initialize()
 {
   appletHook(&m_applet_cookie, ::AppletModeChange, this);
 
@@ -144,7 +144,7 @@ bool SwitchNoGUIPlatform::Initialize()
   return true;
 }
 
-void SwitchNoGUIPlatform::ReportError(const std::string_view& title, const std::string_view& message)
+void SwitchFrontendPlatform::ReportError(const std::string_view& title, const std::string_view& message)
 {
   // Do not use the system error applet here: launching it crashed on firmware 21.0.1 (error 2128-0500,
   // program 0100000000001005). The message is always in the log file, and is shown on screen if the GUI is up.
@@ -154,16 +154,16 @@ void SwitchNoGUIPlatform::ReportError(const std::string_view& title, const std::
     Host::AddOSDMessage(std::string(message), Host::OSD_CRITICAL_ERROR_DURATION);
 }
 
-bool SwitchNoGUIPlatform::ConfirmMessage(const std::string_view& title, const std::string_view& message)
+bool SwitchFrontendPlatform::ConfirmMessage(const std::string_view& title, const std::string_view& message)
 {
   return true;
 }
 
-void SwitchNoGUIPlatform::SetDefaultConfig(SettingsInterface& si)
+void SwitchFrontendPlatform::SetDefaultConfig(SettingsInterface& si)
 {
 }
 
-bool SwitchNoGUIPlatform::CreatePlatformWindow(std::string title)
+bool SwitchFrontendPlatform::CreatePlatformWindow(std::string title)
 {
   // Mesa takes the surface size from the native window.
   const std::optional<WindowInfo> wi = GetPlatformWindowInfo();
@@ -173,16 +173,16 @@ bool SwitchNoGUIPlatform::CreatePlatformWindow(std::string title)
   return true;
 }
 
-bool SwitchNoGUIPlatform::HasPlatformWindow() const
+bool SwitchFrontendPlatform::HasPlatformWindow() const
 {
   return true;
 }
 
-void SwitchNoGUIPlatform::DestroyPlatformWindow()
+void SwitchFrontendPlatform::DestroyPlatformWindow()
 {
 }
 
-std::optional<WindowInfo> SwitchNoGUIPlatform::GetPlatformWindowInfo()
+std::optional<WindowInfo> SwitchFrontendPlatform::GetPlatformWindowInfo()
 {
   WindowInfo wi;
   AppletOperationMode mode = appletGetOperationMode();
@@ -204,26 +204,26 @@ std::optional<WindowInfo> SwitchNoGUIPlatform::GetPlatformWindowInfo()
   return wi;
 }
 
-void SwitchNoGUIPlatform::SetPlatformWindowTitle(std::string title)
+void SwitchFrontendPlatform::SetPlatformWindowTitle(std::string title)
 {
 }
 
-std::optional<u32> SwitchNoGUIPlatform::ConvertHostKeyboardStringToCode(const std::string_view& str)
-{
-  return std::nullopt;
-}
-
-std::optional<std::string> SwitchNoGUIPlatform::ConvertHostKeyboardCodeToString(u32 code)
+std::optional<u32> SwitchFrontendPlatform::ConvertHostKeyboardStringToCode(const std::string_view& str)
 {
   return std::nullopt;
 }
 
-void SwitchNoGUIPlatform::RunMessageLoop()
+std::optional<std::string> SwitchFrontendPlatform::ConvertHostKeyboardCodeToString(u32 code)
+{
+  return std::nullopt;
+}
+
+void SwitchFrontendPlatform::RunMessageLoop()
 {
   while (m_message_loop_running.load(std::memory_order_acquire))
   {
     if (!appletMainLoop())
-      NoGUIHost::StopRunning();
+      FrontendHost::StopRunning();
 
     // Do not spin a whole core, callbacks posted by the CPU thread are not latency critical.
     svcSleepThread(2'000'000);
@@ -240,32 +240,32 @@ void SwitchNoGUIPlatform::RunMessageLoop()
   }
 }
 
-void SwitchNoGUIPlatform::ExecuteInMessageLoop(std::function<void()> func)
+void SwitchFrontendPlatform::ExecuteInMessageLoop(std::function<void()> func)
 {
   std::unique_lock lock(m_callback_queue_mutex);
   m_callback_queue.push_back(std::move(func));
 }
 
-void SwitchNoGUIPlatform::QuitMessageLoop()
+void SwitchFrontendPlatform::QuitMessageLoop()
 {
   m_message_loop_running.store(false, std::memory_order_release);
 }
 
-void SwitchNoGUIPlatform::SetFullscreen(bool enabled)
+void SwitchFrontendPlatform::SetFullscreen(bool enabled)
 {
 }
 
-bool SwitchNoGUIPlatform::RequestRenderWindowSize(s32 new_window_width, s32 new_window_height)
-{
-  return false;
-}
-
-bool SwitchNoGUIPlatform::OpenURL(const std::string_view& url)
+bool SwitchFrontendPlatform::RequestRenderWindowSize(s32 new_window_width, s32 new_window_height)
 {
   return false;
 }
 
-bool SwitchNoGUIPlatform::CopyTextToClipboard(const std::string_view& text)
+bool SwitchFrontendPlatform::OpenURL(const std::string_view& url)
+{
+  return false;
+}
+
+bool SwitchFrontendPlatform::CopyTextToClipboard(const std::string_view& text)
 {
   return false;
 }

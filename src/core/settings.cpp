@@ -2044,7 +2044,7 @@ static const char* s_log_filters[] = {
   "MemoryArena",
   "MemoryCard",
   "Multitap",
-  "NoGUIHost",
+  "FrontendHost",
   "PCDrv",
   "PGXP",
   "PSFLoader",
@@ -2096,12 +2096,12 @@ static const char* s_log_filters[] = {
   "XAudio2AudioStream",
   "XInputSource",
 #elif defined(__APPLE__)
-  "CocoaNoGUIPlatform",
+  "CocoaFrontendPlatform",
   "CocoaProgressCallback",
   "MetalDevice",
 #else
-  "X11NoGUIPlatform",
-  "WaylandNoGUIPlatform",
+  "X11FrontendPlatform",
+  "WaylandFrontendPlatform",
 #endif
 };
 

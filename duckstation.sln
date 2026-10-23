@@ -42,7 +42,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "updater", "src\updater\upda
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "vixl", "dep\vixl\vixl.vcxproj", "{8906836E-F06E-46E8-B11A-74E5E8C7B8FB}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "duckstation-nogui", "src\duckstation-nogui\duckstation-nogui.vcxproj", "{0A172B2E-DC67-49FC-A4C1-975F93C586C4}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "duckstation-switch", "src\duckstation-switch\duckstation-switch.vcxproj", "{0A172B2E-DC67-49FC-A4C1-975F93C586C4}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "rcheevos", "dep\rcheevos\rcheevos.vcxproj", "{4BA0A6D4-3AE1-42B2-9347-096FD023FF64}"
 EndProject

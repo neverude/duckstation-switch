@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2019-2023 Connor McLaughlin <stenzek@gmail.com>
 // SPDX-License-Identifier: (GPL-3.0 OR CC-BY-NC-ND-4.0)
 
-#include "cocoa_nogui_platform.h"
+#include "cocoa_frontend_platform.h"
 #include "cocoa_key_names.h"
-#include "nogui_host.h"
+#include "frontend_host.h"
 
 #include "core/host.h"
 
@@ -15,11 +15,11 @@
 #include "common/string_util.h"
 #include "common/threading.h"
 
-Log_SetChannel(CocoaNoGUIPlatform);
+Log_SetChannel(CocoaFrontendPlatform);
 
 constexpr NSWindowStyleMask WINDOWED_STYLE = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable;
 
-@implementation CocoaNoGUIView
+@implementation CocoaFrontendView
 
 - (BOOL)acceptsFirstResponder {
   return YES;
@@ -28,23 +28,23 @@ constexpr NSWindowStyleMask WINDOWED_STYLE = NSWindowStyleMaskTitled | NSWindowS
   return YES;
 }
 - (void)mouseDown:(NSEvent *)event {
-  NoGUIHost::ProcessPlatformMouseButtonEvent(0, true);
+  FrontendHost::ProcessPlatformMouseButtonEvent(0, true);
 }
 - (void)rightMouseDown:(NSEvent *)event {
-  NoGUIHost::ProcessPlatformMouseButtonEvent(1, true);
+  FrontendHost::ProcessPlatformMouseButtonEvent(1, true);
 }
 - (void)otherMouseDown:(NSEvent *)event {
-  NoGUIHost::ProcessPlatformMouseButtonEvent(static_cast<s32>(event.buttonNumber), true);
+  FrontendHost::ProcessPlatformMouseButtonEvent(static_cast<s32>(event.buttonNumber), true);
 }
 
 - (void)mouseUp:(NSEvent *)event {
-  NoGUIHost::ProcessPlatformMouseButtonEvent(0, false);
+  FrontendHost::ProcessPlatformMouseButtonEvent(0, false);
 }
 - (void)rightMouseUp:(NSEvent *)event {
-  NoGUIHost::ProcessPlatformMouseButtonEvent(1, false);
+  FrontendHost::ProcessPlatformMouseButtonEvent(1, false);
 }
 - (void)otherMouseUp:(NSEvent *)event {
-  NoGUIHost::ProcessPlatformMouseButtonEvent(static_cast<s32>(event.buttonNumber), false);
+  FrontendHost::ProcessPlatformMouseButtonEvent(static_cast<s32>(event.buttonNumber), false);
 }
 
 - (void)mouseMoved:(NSEvent *)event {
@@ -54,7 +54,7 @@ constexpr NSWindowStyleMask WINDOWED_STYLE = NSWindowStyleMaskTitled | NSWindowS
   const NSSize size = [contentView convertSizeToBacking:contentView.frame.size];
   const float local_x = pt.x;
   const float local_y = size.height - pt.y;
-  NoGUIHost::ProcessPlatformMouseMoveEvent(local_x, local_y);
+  FrontendHost::ProcessPlatformMouseMoveEvent(local_x, local_y);
 }
 
 - (void)keyDown:(NSEvent *)event {
@@ -65,24 +65,24 @@ constexpr NSWindowStyleMask WINDOWED_STYLE = NSWindowStyleMaskTitled | NSWindowS
   }
   
   if (!event.isARepeat)
-    NoGUIHost::ProcessPlatformKeyEvent(static_cast<s32>(event.keyCode), true);
+    FrontendHost::ProcessPlatformKeyEvent(static_cast<s32>(event.keyCode), true);
 }
 
 - (void)keyUp:(NSEvent *)event {
   [super keyUp:event];
-  NoGUIHost::ProcessPlatformKeyEvent(static_cast<s32>(event.keyCode), false);
+  FrontendHost::ProcessPlatformKeyEvent(static_cast<s32>(event.keyCode), false);
 }
 
 - (void)windowDidEndLiveResize:(NSNotification *)notif
 {
   const NSSize size = [self convertSizeToBacking:self.frame.size];
-  NoGUIHost::ProcessPlatformWindowResize(static_cast<s32>(size.width), static_cast<s32>(size.height), 1.0f);
+  FrontendHost::ProcessPlatformWindowResize(static_cast<s32>(size.width), static_cast<s32>(size.height), 1.0f);
 }
 @end
 
-CocoaNoGUIPlatform::CocoaNoGUIPlatform() = default;
+CocoaFrontendPlatform::CocoaFrontendPlatform() = default;
 
-CocoaNoGUIPlatform::~CocoaNoGUIPlatform()
+CocoaFrontendPlatform::~CocoaFrontendPlatform()
 {
   if (m_window)
   {
@@ -91,7 +91,7 @@ CocoaNoGUIPlatform::~CocoaNoGUIPlatform()
   }
 }
 
-bool CocoaNoGUIPlatform::Initialize()
+bool CocoaFrontendPlatform::Initialize()
 {
   [NSApplication sharedApplication];
   
@@ -101,7 +101,7 @@ bool CocoaNoGUIPlatform::Initialize()
   return true;
 }
 
-void CocoaNoGUIPlatform::ReportError(const std::string_view& title, const std::string_view& message)
+void CocoaFrontendPlatform::ReportError(const std::string_view& title, const std::string_view& message)
 {
   if (![NSThread isMainThread])
   {
@@ -117,7 +117,7 @@ void CocoaNoGUIPlatform::ReportError(const std::string_view& title, const std::s
   }
 }
 
-bool CocoaNoGUIPlatform::ConfirmMessage(const std::string_view& title, const std::string_view& message)
+bool CocoaFrontendPlatform::ConfirmMessage(const std::string_view& title, const std::string_view& message)
 {
   if (![NSThread isMainThread])
   {
@@ -136,16 +136,16 @@ bool CocoaNoGUIPlatform::ConfirmMessage(const std::string_view& title, const std
   }
 }
 
-void CocoaNoGUIPlatform::SetDefaultConfig(SettingsInterface& si)
+void CocoaFrontendPlatform::SetDefaultConfig(SettingsInterface& si)
 {
   // noop
 }
 
-bool CocoaNoGUIPlatform::CreatePlatformWindow(std::string title)
+bool CocoaFrontendPlatform::CreatePlatformWindow(std::string title)
 {
   @autoreleasepool {
     s32 window_x, window_y, window_width, window_height;
-    const bool has_window_geom = NoGUIHost::GetSavedPlatformWindowGeometry(&window_x, &window_y, &window_width, &window_height);
+    const bool has_window_geom = FrontendHost::GetSavedPlatformWindowGeometry(&window_x, &window_y, &window_width, &window_height);
     if (!has_window_geom)
     {
       window_width = DEFAULT_WINDOW_WIDTH;
@@ -156,7 +156,7 @@ bool CocoaNoGUIPlatform::CreatePlatformWindow(std::string title)
                                            styleMask:WINDOWED_STYLE
                                              backing:NSBackingStoreBuffered defer:YES];
     
-    CocoaNoGUIView* view = [[[CocoaNoGUIView alloc] init] autorelease];
+    CocoaFrontendView* view = [[[CocoaFrontendView alloc] init] autorelease];
     [m_window setDelegate:view];
     [m_window setContentView:view];
     
@@ -178,12 +178,12 @@ bool CocoaNoGUIPlatform::CreatePlatformWindow(std::string title)
   return true;
 }
 
-bool CocoaNoGUIPlatform::HasPlatformWindow() const
+bool CocoaFrontendPlatform::HasPlatformWindow() const
 {
   return (m_window != NULL);
 }
 
-void CocoaNoGUIPlatform::DestroyPlatformWindow()
+void CocoaFrontendPlatform::DestroyPlatformWindow()
 {
   if (m_window == nil)
     return;
@@ -193,7 +193,7 @@ void CocoaNoGUIPlatform::DestroyPlatformWindow()
   
   if (!m_fullscreen.load(std::memory_order_acquire))
   {
-    NoGUIHost::SavePlatformWindowGeometry(static_cast<s32>(frame_origin.x), static_cast<s32>(frame_origin.y),
+    FrontendHost::SavePlatformWindowGeometry(static_cast<s32>(frame_origin.x), static_cast<s32>(frame_origin.y),
                                           static_cast<s32>(content_size.width), static_cast<s32>(content_size.height));
   }
   
@@ -202,7 +202,7 @@ void CocoaNoGUIPlatform::DestroyPlatformWindow()
   m_window = nil;
 }
 
-std::optional<WindowInfo> CocoaNoGUIPlatform::GetPlatformWindowInfo()
+std::optional<WindowInfo> CocoaFrontendPlatform::GetPlatformWindowInfo()
 {
   if (m_window == nil)
     return std::nullopt;
@@ -219,7 +219,7 @@ std::optional<WindowInfo> CocoaNoGUIPlatform::GetPlatformWindowInfo()
   return wi;
 }
 
-void CocoaNoGUIPlatform::SetPlatformWindowTitle(std::string title)
+void CocoaFrontendPlatform::SetPlatformWindowTitle(std::string title)
 {
   dispatch_async(dispatch_get_main_queue(), [this, title = std::move(title)]() {
     if (!m_window)
@@ -231,41 +231,41 @@ void CocoaNoGUIPlatform::SetPlatformWindowTitle(std::string title)
   });
 }
 
-std::optional<u32> CocoaNoGUIPlatform::ConvertHostKeyboardStringToCode(const std::string_view& str)
+std::optional<u32> CocoaFrontendPlatform::ConvertHostKeyboardStringToCode(const std::string_view& str)
 {
   std::optional<unsigned short> converted(CocoaKeyNames::GetKeyCodeForName(str));
   return converted.has_value() ? std::optional<u32>(static_cast<u32>(converted.value())) : std::nullopt;
 }
 
-std::optional<std::string> CocoaNoGUIPlatform::ConvertHostKeyboardCodeToString(u32 code)
+std::optional<std::string> CocoaFrontendPlatform::ConvertHostKeyboardCodeToString(u32 code)
 {
   const char* converted = CocoaKeyNames::GetKeyName(static_cast<unsigned short>(code));
   return converted ? std::optional<std::string>(converted) : std::nullopt;
 }
 
-void CocoaNoGUIPlatform::RunMessageLoop()
+void CocoaFrontendPlatform::RunMessageLoop()
 {
   [NSApp run];
 }
 
-void CocoaNoGUIPlatform::ExecuteInMessageLoop(std::function<void()> func)
+void CocoaFrontendPlatform::ExecuteInMessageLoop(std::function<void()> func)
 {
   dispatch_async(dispatch_get_main_queue(), [func = std::move(func)]() {
     func();
   });
 }
 
-void CocoaNoGUIPlatform::QuitMessageLoop()
+void CocoaFrontendPlatform::QuitMessageLoop()
 {
   [NSApp stop:nil];
 }
 
-void CocoaNoGUIPlatform::SetFullscreen(bool enabled)
+void CocoaFrontendPlatform::SetFullscreen(bool enabled)
 {
   Log_ErrorPrint("SetFullscreen() not implemented.");
 }
 
-bool CocoaNoGUIPlatform::RequestRenderWindowSize(s32 new_window_width, s32 new_window_height)
+bool CocoaFrontendPlatform::RequestRenderWindowSize(s32 new_window_width, s32 new_window_height)
 {
   dispatch_async(dispatch_get_main_queue(), [this, new_window_width, new_window_height]() {
     if (!m_window)
@@ -279,21 +279,21 @@ bool CocoaNoGUIPlatform::RequestRenderWindowSize(s32 new_window_width, s32 new_w
   return true;
 }
 
-bool CocoaNoGUIPlatform::OpenURL(const std::string_view& url)
+bool CocoaFrontendPlatform::OpenURL(const std::string_view& url)
 {
   Log_ErrorPrint("OpenURL() not implemented.");
   return false;
 }
 
-bool CocoaNoGUIPlatform::CopyTextToClipboard(const std::string_view& text)
+bool CocoaFrontendPlatform::CopyTextToClipboard(const std::string_view& text)
 {
   Log_ErrorPrint("CopyTextToClipboard() not implemented.");
   return false;
 }
 
-std::unique_ptr<NoGUIPlatform> NoGUIPlatform::CreateCocoaPlatform()
+std::unique_ptr<FrontendPlatform> FrontendPlatform::CreateCocoaPlatform()
 {
-  std::unique_ptr<CocoaNoGUIPlatform> ret(new CocoaNoGUIPlatform());
+  std::unique_ptr<CocoaFrontendPlatform> ret(new CocoaFrontendPlatform());
   if (!ret->Initialize())
     return {};
 

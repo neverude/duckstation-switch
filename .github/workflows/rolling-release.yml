@@ -74,7 +74,7 @@ jobs:
         call update_rc_version.bat
         cd ..\..
         git update-index --assume-unchanged src/duckstation-qt/duckstation-qt.rc
-        git update-index --assume-unchanged src/duckstation-nogui/duckstation-nogui.rc
+        git update-index --assume-unchanged src/duckstation-switch/duckstation-switch.rc
 
     - name: Compile x64 release build
       shell: cmd
@@ -166,7 +166,7 @@ jobs:
         call update_rc_version.bat
         cd ..\..
         git update-index --assume-unchanged src/duckstation-qt/duckstation-qt.rc
-        git update-index --assume-unchanged src/duckstation-nogui/duckstation-nogui.rc
+        git update-index --assume-unchanged src/duckstation-switch/duckstation-switch.rc
 
     - name: Compile arm64 release build
       shell: cmd

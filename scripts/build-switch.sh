@@ -14,7 +14,7 @@ cd "$BUILD_DIR"
 
 "$DEVKITPRO/portlibs/switch/bin/aarch64-none-elf-cmake" -G Ninja \
   -DCMAKE_BUILD_TYPE=Release \
-  -DBUILD_NOGUI_FRONTEND=ON \
+  -DBUILD_SWITCH_FRONTEND=ON \
   -DBUILD_QT_FRONTEND=OFF \
   -DENABLE_VULKAN=OFF \
   -DENABLE_CUBEB=OFF \
@@ -22,6 +22,6 @@ cd "$BUILD_DIR"
   -DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON \
   "$SRC_DIR"
 
-ninja duckstation-nogui_nro
+ninja duckstation-switch_nro
 
 echo "Built: $BUILD_DIR/duckstation.nro"

@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="frontend_host.cpp" />
+    <ClCompile Include="win32_frontend_platform.cpp" />
+    <ClCompile Include="wayland_frontend_platform.cpp" />
+    <ClCompile Include="x11_frontend_platform.cpp" />
+    <ClCompile Include="pch.cpp" />
+    <ClCompile Include="sdl_frontend_platform.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="frontend_host.h" />
+    <ClInclude Include="win32_frontend_platform.h" />
+    <ClInclude Include="frontend_platform.h" />
+    <ClInclude Include="wayland_frontend_platform.h" />
+    <ClInclude Include="x11_frontend_platform.h" />
+    <ClInclude Include="pch.h" />
+    <ClInclude Include="sdl_frontend_platform.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="duckstation-switch.manifest" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="duckstation-switch.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="duckstation-switch.rc" />
+  </ItemGroup>
+</Project>
