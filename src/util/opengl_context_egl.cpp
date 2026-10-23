@@ -63,11 +63,51 @@ static void UnloadEGL()
   }
 }
 
+#ifdef __SWITCH__
+// glad redefines every eglXxx name to its own function pointer (e.g. eglGetProcAddress -> glad_eglGetProcAddress),
+// which are all null until gladLoadEGL() has run. Calling them to load them crashes, so bind the real, statically
+// linked libEGL functions by their assembler names instead.
+#define SWITCH_EGL_FUNCTIONS(X)                                                                                        \
+  X(eglBindAPI) X(eglBindTexImage) X(eglChooseConfig) X(eglClientWaitSync) X(eglCopyBuffers) X(eglCreateContext)      \
+  X(eglCreateImage) X(eglCreatePbufferFromClientBuffer) X(eglCreatePbufferSurface) X(eglCreatePixmapSurface)           \
+  X(eglCreatePlatformPixmapSurface) X(eglCreatePlatformWindowSurface) X(eglCreateSync) X(eglCreateWindowSurface)       \
+  X(eglDestroyContext) X(eglDestroyImage) X(eglDestroySurface) X(eglDestroySync) X(eglGetConfigAttrib)                \
+  X(eglGetConfigs) X(eglGetCurrentContext) X(eglGetCurrentDisplay) X(eglGetCurrentSurface) X(eglGetDisplay)           \
+  X(eglGetError) X(eglGetPlatformDisplay) X(eglGetProcAddress) X(eglGetSyncAttrib) X(eglInitialize)                   \
+  X(eglMakeCurrent) X(eglQueryAPI) X(eglQueryContext) X(eglQueryString) X(eglQuerySurface) X(eglReleaseTexImage)     \
+  X(eglReleaseThread) X(eglSurfaceAttrib) X(eglSwapBuffers) X(eglSwapInterval) X(eglTerminate) X(eglWaitClient)       \
+  X(eglWaitGL) X(eglWaitNative) X(eglWaitSync)
+
+extern "C" {
+#define DECLARE_REAL_EGL_FUNCTION(name) void switch_real_##name() __asm__(#name);
+SWITCH_EGL_FUNCTIONS(DECLARE_REAL_EGL_FUNCTION)
+#undef DECLARE_REAL_EGL_FUNCTION
+}
+
+static const struct
+{
+  const char* name;
+  GLADapiproc address;
+} s_switch_egl_functions[] = {
+#define REAL_EGL_FUNCTION_ENTRY(name) {#name, reinterpret_cast<GLADapiproc>(&switch_real_##name)},
+  SWITCH_EGL_FUNCTIONS(REAL_EGL_FUNCTION_ENTRY)
+#undef REAL_EGL_FUNCTION_ENTRY
+};
+
+extern "C" void* switch_real_eglGetProcAddress_call(const char*) __asm__("eglGetProcAddress");
+#endif
+
 static GLADapiproc GetEGLProcAddress(const char* name)
 {
 #ifdef __SWITCH__
   // libEGL is statically linked on Switch, there is no dynamic library to query.
-  return reinterpret_cast<GLADapiproc>(eglGetProcAddress(name));
+  for (const auto& entry : s_switch_egl_functions)
+  {
+    if (std::strcmp(entry.name, name) == 0)
+      return entry.address;
+  }
+
+  return reinterpret_cast<GLADapiproc>(switch_real_eglGetProcAddress_call(name));
 #else
   return reinterpret_cast<GLADapiproc>(s_egl_library.GetSymbolAddress(name));
 #endif
