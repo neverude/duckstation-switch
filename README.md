@@ -2,27 +2,43 @@
 
 This is a Nintendo Switch port of [DuckStation](https://github.com/stenzek/duckstation), a PlayStation 1 (PSX) emulator. It runs as a homebrew application (`duckstation.nro`) on a modified Switch.
 
-If you have never run homebrew before, start with the **[NH Switch Guide](https://switch.hacks.guide)**. It walks you through installing Atmosphère, hekate and the Homebrew Menu (hbmenu). Nothing in this README replaces that guide, and DuckStation cannot run on a stock Switch.
+Your Switch needs custom firmware (Atmosphère) and the Homebrew Menu (hbmenu) before this runs. The **[NH Switch Guide](https://switch.hacks.guide)** explains how to set those up. This README does not replace that guide.
 
-Upstream DuckStation (PC, Android, macOS) is documented in [README.md](https://github.com/stenzek/duckstation/blob/master/README.md). This file covers only the Switch port.
+Upstream DuckStation (PC, Android, macOS) is documented in its own [README.md](https://github.com/stenzek/duckstation/blob/master/README.md). This file covers only the Switch port.
 
-## What you need
+## 1. Build `duckstation.nro`
 
-- A Switch running custom firmware (Atmosphère) with the Homebrew Menu, set up as described in the [NH Switch Guide](https://switch.hacks.guide)
-- A microSD card with a copy of `duckstation.nro` (see [Building](#building) or ask for a prebuilt file)
-- A PlayStation 1 BIOS dump from your own console. It is not included and cannot be shared with this project.
-- PS1 game images you own. Supported formats are the same as upstream: `.bin/.cue`, `.img`, `.chd`, `.ecm`, `.mds/.mdf` and `.pbp`.
+Build on a Linux PC with devkitPro installed. You need `devkitA64`, `libnx`, the Switch portlibs (zstd, webp, zlib, mesa, png, jpeg, freetype, harfbuzz, curl, libdrm_nouveau), and CMake and Ninja on your `PATH`.
 
-## Installation
+From the root of this repository, run:
 
-1. Create the folder `sdmc:/switch/duckstation/` on the microSD card.
-2. Copy `duckstation.nro` into that folder.
-3. Create a `bios` folder inside it (`sdmc:/switch/duckstation/bios/`) and copy your PS1 BIOS file there.
-4. Copy your game images anywhere on the card, for example `sdmc:/roms/psx/`, and add that folder as a game directory in DuckStation's settings.
+```bash
+./scripts/build-switch.sh
+```
 
-DuckStation keeps its settings, memory cards, save states and BIOS next to `duckstation.nro`. If you put a `settings.ini` or `portable.txt` next to the `.nro`, it uses that folder for data in the same way.
+When it finishes, the file is at:
 
-## Starting DuckStation
+```
+/tmp/opencode/build-switch/duckstation.nro
+```
+
+The script puts its build in `/tmp/opencode/build-switch` by default, and `/tmp` may be cleared on reboot. To keep the build somewhere permanent, set `BUILD_DIR` first:
+
+```bash
+BUILD_DIR=~/builds/duckstation-switch ./scripts/build-switch.sh
+```
+
+If devkitPro is not in `/opt/devkitpro`, also set `DEVKITPRO`.
+
+## 2. Put it on the Switch
+
+1. Create the folder `sdmc:/switch/duckstation/` on the microSD card. `sdmc:` is the root of the card.
+2. Copy `duckstation.nro` into that folder, so the path is `sdmc:/switch/duckstation/duckstation.nro`.
+3. Put the card back in the Switch.
+
+DuckStation uses the folder that contains `duckstation.nro` for its data. That includes the BIOS, memory cards, save states and settings. Step 4 explains what goes into it.
+
+## 3. Start it
 
 DuckStation must run in **application mode**. It refuses to start when hbmenu is opened through the Album applet.
 
@@ -33,9 +49,26 @@ DuckStation must run in **application mode**. It refuses to start when hbmenu is
 
 If you see the message "DuckStation needs to run in application mode", repeat these steps. The NH Switch Guide explains "title takeover", which gives homebrew the resources it needs. Set it up before you try this.
 
+## 4. Add the BIOS and games
+
+You need:
+
+- A PlayStation 1 BIOS dump from your own console. It is not included here and cannot be shared with this project.
+- PS1 game images you own. The supported formats are the same as upstream: `.bin/.cue`, `.img`, `.chd`, `.ecm`, `.mds/.mdf` and `.pbp`.
+
+Copy the BIOS file into a `bios` folder next to the `.nro`:
+
+```
+sdmc:/switch/duckstation/bios/
+```
+
+Copy your game images anywhere on the card, for example `sdmc:/roms/psx/`. Then add that folder as a game directory in DuckStation's settings.
+
+If you put a `settings.ini` or `portable.txt` next to the `.nro`, DuckStation keeps its data there in the same way.
+
 ## Controls
 
-These are the defaults on the Switch controller. You can change them in the settings.
+These are the defaults for the Switch controller. You can change them in the settings.
 
 | Switch input | PS1 action |
 | --- | --- |
@@ -43,8 +76,8 @@ These are the defaults on the Switch controller. You can change them in the sett
 | Plus / Minus | Start / Select |
 | D-Pad, left stick | D-Pad, analog stick |
 | L / R, ZL / ZR | L1 / R1, L2 / R2 |
-| Right stick press (R3) | Pause menu |
-| Left stick press (L3) | Toggle fast forward |
+| Right stick press | Pause menu |
+| Left stick press | Toggle fast forward |
 
 Shortcuts (hold the first button, then press the second):
 
@@ -73,7 +106,7 @@ Log files are written to the microSD card so you can read them after a crash:
 - `sdmc:/switch/duckstation/duckstation.log`: startup and runtime log
 - `sdmc:/switch/duckstation/crash.txt`: crash report, written when DuckStation crashes
 
-To get more detailed logs, create an empty file at `sdmc:/switch/duckstation/debug.txt`. Delete it when you are done, since verbose logging writes a lot to the SD card.
+For more detailed logs, create an empty file at `sdmc:/switch/duckstation/debug.txt`. Delete it when you are done, since verbose logging writes a lot to the SD card.
 
 When you report a problem, include the log file and the crash report if there is one. Also include your Atmosphère version, firmware version, the game name, and whether it happens on the same game every time.
 
@@ -82,18 +115,6 @@ Known issues:
 - The port is marked **pre-release**. Expect rough edges and games that do not run correctly.
 - LibCrypt games need the matching `.sbi` file next to the disc image. See the LibCrypt section of the upstream README.
 
-## Building
-
-Building needs devkitPro with `devkitA64`, `libnx` and the Switch portlibs (zstd, webp, zlib, mesa, png, jpeg, freetype, harfbuzz, curl, libdrm_nouveau), plus CMake and Ninja on your `PATH`. The build script is the supported way to build:
-
-```bash
-./scripts/build-switch.sh
-```
-
-The script writes its build to `/tmp/opencode/build-switch` by default. Set `BUILD_DIR` to change this, and `DEVKITPRO` if devkitPro is not in `/opt/devkitpro`. The output is `duckstation.nro` in the build folder.
-
-The build uses these options: `BUILD_SWITCH_FRONTEND=ON`, `BUILD_QT_FRONTEND=OFF`, `ENABLE_VULKAN=OFF`, `ENABLE_CUBEB=OFF`, `ENABLE_DEKO3D=OFF`.
-
 ## Where the code is
 
 - `src/duckstation-switch/`: the Switch frontend (`frontend_host.cpp`, `switch_frontend_platform.cpp`)
@@ -101,6 +122,8 @@ The build uses these options: `BUILD_SWITCH_FRONTEND=ON`, `BUILD_QT_FRONTEND=OFF
 - `src/util/deko3d_*`: the deko3d renderer. It is included in the source but not enabled in the default build.
 - `scripts/build-switch.sh`: the build script
 - `extras/icons/icon-switch.jpg`: the icon shown in hbmenu
+
+The build script passes these options to CMake: `BUILD_SWITCH_FRONTEND=ON`, `BUILD_QT_FRONTEND=OFF`, `ENABLE_VULKAN=OFF`, `ENABLE_CUBEB=OFF`, `ENABLE_DEKO3D=OFF`.
 
 ## Credits
 
