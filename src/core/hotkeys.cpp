@@ -35,8 +35,8 @@ void Settings::SetDefaultHotkeyConfig(SettingsInterface& si)
   si.SetStringValue("Hotkeys", "OpenPauseMenu", "P0/RStick");
   si.AddToStringList("Hotkeys", "OpenPauseMenu", "P0/ZL & P0/ZR");
   si.SetStringValue("Hotkeys", "ToggleFastForward", "P0/LStick");
-  si.SetStringValue("Hotkeys", "SaveSelectedSaveState", "P0/ZL & P0/X");
-  si.SetStringValue("Hotkeys", "LoadSelectedSaveState", "P0/ZL & P0/Y");
+  si.SetStringValue("Hotkeys", "SaveSelectedSaveState", "P0/ZR & P0/B");
+  si.SetStringValue("Hotkeys", "LoadSelectedSaveState", "P0/ZR & P0/Y");
   si.SetStringValue("Hotkeys", "ToggleAspectRatio", "P0/ZR & P0/X");
 #elif !defined(__ANDROID__)
   si.SetStringValue("Hotkeys", "FastForward", "Keyboard/Tab");

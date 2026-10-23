@@ -300,7 +300,12 @@ void Settings::Load(SettingsInterface& si)
       si.GetStringValue("CDROM", "MechaconVersion", GetCDROMMechVersionName(DEFAULT_CDROM_MECHACON_VERSION)).c_str())
       .value_or(DEFAULT_CDROM_MECHACON_VERSION);
   cdrom_region_check = si.GetBoolValue("CDROM", "RegionCheck", false);
+#ifdef __SWITCH__
+  // Reading the disc from the SD card during play causes stutter, the whole image is cheaper to keep in memory.
+  cdrom_load_image_to_ram = si.GetBoolValue("CDROM", "LoadImageToRAM", true);
+#else
   cdrom_load_image_to_ram = si.GetBoolValue("CDROM", "LoadImageToRAM", false);
+#endif
   cdrom_load_image_patches = si.GetBoolValue("CDROM", "LoadImagePatches", false);
   cdrom_mute_cd_audio = si.GetBoolValue("CDROM", "MuteCDAudio", false);
   cdrom_read_speedup = si.GetIntValue("CDROM", "ReadSpeedup", 1);

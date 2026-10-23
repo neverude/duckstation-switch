@@ -232,7 +232,7 @@ void NoGUIHost::SetDataDirectory()
 #ifdef __SWITCH__
 // Settings files created before the Switch defaults existed only contain keyboard bindings, which do nothing on
 // Switch. Bring them up to date, without touching anything that was set up for the Switch controller.
-static constexpr u32 SWITCH_DEFAULTS_VERSION = 5;
+static constexpr u32 SWITCH_DEFAULTS_VERSION = 6;
 
 static bool ApplySwitchSettingsDefaults(SettingsInterface& si)
 {
@@ -278,10 +278,13 @@ static bool ApplySwitchSettingsDefaults(SettingsInterface& si)
     si.DeleteValue("Hotkeys", "ToggleFastForward");
     si.SetStringValue("Hotkeys", "ToggleFastForward", "P0/LStick");
 
-    // Quick save / quick load / aspect ratio, all with ZL or ZR held so the face buttons still work normally.
-    si.SetStringValue("Hotkeys", "SaveSelectedSaveState", "P0/ZL & P0/X");
-    si.SetStringValue("Hotkeys", "LoadSelectedSaveState", "P0/ZL & P0/Y");
+    // Quick save / quick load with ZR held, aspect ratio cycle with ZR + X.
+    si.SetStringValue("Hotkeys", "SaveSelectedSaveState", "P0/ZR & P0/B");
+    si.SetStringValue("Hotkeys", "LoadSelectedSaveState", "P0/ZR & P0/Y");
     si.SetStringValue("Hotkeys", "ToggleAspectRatio", "P0/ZR & P0/X");
+
+    // Read the disc into memory once, so playing does not depend on SD card speed.
+    si.SetBoolValue("CDROM", "LoadImageToRAM", true);
 
     // Stretch to the whole screen, with all borders cropped.
     si.SetStringValue("Display", "AspectRatio", Settings::GetDisplayAspectRatioName(DisplayAspectRatio::MatchWindow));
