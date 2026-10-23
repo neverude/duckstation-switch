@@ -12,7 +12,7 @@ This guide is for people who have never modded a console before. Read each step 
 
 - A Nintendo Switch that runs **custom firmware (Atmosphère)** with the **Homebrew Menu (hbmenu)**. If you do not have this yet, follow the [NH Switch Guide](https://switch.hacks.guide) first. It takes about an hour.
 - A **microSD card** that is in the Switch, plus a way to plug it into a computer (a card reader or a built-in slot).
-- A computer running Windows, macOS or Linux.
+- A computer running Linux (for building), or a Linux-based setup to copy files to the card. Windows is not supported by this project.
 - A **PS1 BIOS file** from a PlayStation you own. It is not included here, and this project cannot give it to you.
 - **PS1 game files** that you own (for example `.bin` + `.cue`, or `.chd`).
 
