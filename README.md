@@ -14,7 +14,7 @@ Mount the microSD card, then run this from the root of the repository:
 ./scripts/build-switch.sh
 ```
 
-This builds `duckstation.nro` and copies it to the card. If more than one drive is mounted, pass the card's path:
+This builds `duckstation.nro`, saves it to `dist/duckstation.nro` in this repository, and copies it to `<card>/switch/duckstation/duckstation.nro`. If more than one drive is mounted, pass the card's path:
 
 ```bash
 ./scripts/build-switch.sh /run/media/$USER/YOUR_SD_CARD

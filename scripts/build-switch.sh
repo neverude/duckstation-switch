@@ -78,12 +78,18 @@ ninja duckstation-switch_nro
 
 BUILT="$BUILD_DIR/$NRO_NAME"
 [ -s "$BUILT" ] || die "Build finished but $BUILT was not created."
+
+# Always keep a copy in dist/ inside the repository
+DIST_DIR="$SRC_DIR/dist"
+mkdir -p "$DIST_DIR"
+cp "$BUILT" "$DIST_DIR/$NRO_NAME"
+BUILT="$DIST_DIR/$NRO_NAME"
 echo "Built: $BUILT"
 
 if [ "$MODE" = "none" ]; then
   echo
-  echo "Next step: copy it to the SD card at  $SD_SUBDIR/$NRO_NAME"
-  echo "Or run:    ./scripts/build-switch.sh /path/to/sdcard"
+  echo "Next step: copy it to  /<where-the-sd-card-is-mounted>/$SD_SUBDIR/$NRO_NAME"
+  echo "Or run:    ./scripts/build-switch.sh /<where-the-sd-card-is-mounted>"
   exit 0
 fi
 
