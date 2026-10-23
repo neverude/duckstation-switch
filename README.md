@@ -24,7 +24,7 @@ This guide is for people who have never modded a console before. Read each step 
 
 ### Option A: Download it (recommended)
 
-1. Open the **[Releases page](https://github.com/neverude/duckstation-switch/releases/latest)**.
+1. Open the **[Releases page](https://github.com/neverude/duckstation-switch/releases/tag/switch-pre1)**.
 2. Under **Assets**, click **duckstation.nro** to download it.
 
 ### Option B: Build it yourself (advanced)
