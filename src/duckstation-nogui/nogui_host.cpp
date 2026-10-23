@@ -1365,33 +1365,60 @@ extern "C" void userAppExit()
 }
 #endif
 
+#ifdef __SWITCH__
+// Shows a message on a plain text console and waits for a button press.
+// This deliberately does not use the system error applet, which crashes when started from applet mode
+// on firmware 21.0.1 (error 2128-0500, program 0100000000001005).
+static void ShowSwitchConsoleMessage(const char* message)
+{
+  consoleInit(nullptr);
+  std::printf("%s\n\nPress A, B or + to exit.\n", message);
+  consoleUpdate(nullptr);
+
+  padConfigureInput(1, HidNpadStyleSet_NpadStandard);
+  PadState pad;
+  padInitializeDefault(&pad);
+  while (appletMainLoop())
+  {
+    padUpdate(&pad);
+    if (padGetButtonsDown(&pad) & (HidNpadButton_A | HidNpadButton_B | HidNpadButton_Plus))
+      break;
+
+    consoleUpdate(nullptr);
+  }
+
+  consoleExit(nullptr);
+}
+#endif
+
 int main(int argc, char* argv[])
 {
 #ifdef __SWITCH__
-  // the earlier we do this the lesser the chance
-  // things crash and burn due to applet mode
-  if (appletGetAppletType() != AppletType_Application)
-  {
-    ErrorApplicationConfig errcfg;
-    errorApplicationCreate(
-      &errcfg,
-      "duckstation requires to be run in application mode. It does not work in applet (\"Album\") mode!"
-      "See details for more information.",
-      "The hbmenu needs to be started with title override. By default this is"
-      "accomplished by pressing R while starting any application from the homemenu\n\n"
-
-      "With Atmosphere's override_config.ini config file this behaviour can be customised.");
-    errorApplicationShow(&errcfg);
-
-    return 0;
-  }
-
   switch_program_path = argv[0];
 
   // Log to the SD card, so startup problems can be read from the file after a crash.
   FileSystem::EnsureDirectoryExists("sdmc:/switch/duckstation", true);
   Log::SetFileOutputParams(true, "sdmc:/switch/duckstation/duckstation.log");
-  Log_InfoFmt("DuckStation Switch startup, program path '{}'", switch_program_path);
+  Log_InfoFmt("DuckStation Switch startup, program path '{}', applet type {}", switch_program_path,
+              static_cast<int>(appletGetAppletType()));
+
+  // the earlier we do this the lesser the chance
+  // things crash and burn due to applet mode
+  if (appletGetAppletType() != AppletType_Application)
+  {
+    Log_ErrorPrint("Started in applet mode, refusing to run.");
+    ShowSwitchConsoleMessage(
+      "DuckStation needs to run in application mode.\n"
+      "It does not work when hbmenu is opened through the Album (applet mode).\n\n"
+      "How to start it:\n"
+      "  1. Close this and go back to the Home menu.\n"
+      "  2. Select an installed GAME (not Album).\n"
+      "  3. Hold R while pressing A to launch it, until hbmenu appears.\n"
+      "  4. Start duckstation from hbmenu.\n\n"
+      "With Atmosphere's override_config.ini this can be changed.");
+    Log::SetFileOutputParams(false, nullptr);
+    return 0;
+  }
 
   // slight hack, but passing arguments with a dash does
   // not seem to work via nxlink so we cannot enable

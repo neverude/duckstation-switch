@@ -2,9 +2,15 @@
 
 #include "core/host.h"
 
+#include "common/log.h"
+
+#include "util/gpu_device.h"
+#include "util/imgui_manager.h"
 #include "util/switch_exception_frame.h"
 
 #include <switch.h>
+
+Log_SetChannel(SwitchNoGUIPlatform);
 
 namespace Common::PageFaultHandler {
 bool PageFaultHandler(ExceptionFrameA64* ctx);
@@ -100,20 +106,12 @@ bool SwitchNoGUIPlatform::Initialize()
 
 void SwitchNoGUIPlatform::ReportError(const std::string_view& title, const std::string_view& message)
 {
-  // The title is usually just error which is not that informative
-  // so we append the first line of the message
-  std::string shortError(title);
-  shortError += ": ";
-  shortError += message.substr(0, message.find('\n'));
-  // small hack to make the error messages nicer to look at.
-  if (shortError[shortError.size() - 1] == ':')
-    shortError[shortError.size() - 1] = '.';
-  std::string longError(message);
+  // Do not use the system error applet here: launching it crashed on firmware 21.0.1 (error 2128-0500,
+  // program 0100000000001005). The message is always in the log file, and is shown on screen if the GUI is up.
+  Log_ErrorFmt("{}: {}", title, message);
 
-  ErrorApplicationConfig errapp;
-  errorApplicationCreate(&errapp, shortError.c_str(), longError.c_str());
-
-  errorApplicationShow(&errapp);
+  if (g_gpu_device)
+    Host::AddOSDMessage(std::string(message), Host::OSD_CRITICAL_ERROR_DURATION);
 }
 
 bool SwitchNoGUIPlatform::ConfirmMessage(const std::string_view& title, const std::string_view& message)
