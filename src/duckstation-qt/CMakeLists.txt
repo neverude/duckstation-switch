@@ -179,8 +179,6 @@ target_compile_definitions(duckstation-qt PRIVATE QT_NO_EXCEPTIONS)
 add_core_resources(duckstation-qt)
 
 if(WIN32)
-  target_sources(duckstation-qt PRIVATE duckstation-qt.rc)
-
   # We want a Windows subsystem application not console.
   set_target_properties(duckstation-qt PROPERTIES
     WIN32_EXECUTABLE TRUE

@@ -19,190 +19,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  windows-build:
-    runs-on: windows-2022
-    timeout-minutes: 120
-    steps:
-    - uses: actions/checkout@v4.1.1
-      with:
-        fetch-depth: 0
-
-    - name: Cache Dependencies
-      id: cache-deps
-      uses: actions/cache@v3.3.2
-      with:
-        path: |
-          dep/msvc/deps-arm64
-          dep/msvc/deps-x64
-        key: deps ${{ hashFiles('scripts/build-dependencies-windows-arm64.bat', 'scripts/build-dependencies-windows-x64.bat') }}
-
-    - name: Build X64 Dependencies
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      env:
-        DEBUG: 0
-      run: scripts/build-dependencies-windows-x64.bat
-
-    - name: Build ARM64 Dependencies
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      env:
-        DEBUG: 0
-      run: scripts/build-dependencies-windows-arm64.bat
-
-    - name: Tag as preview build
-      if: github.ref == 'refs/heads/master'
-      shell: cmd
-      run: |
-        echo #pragma once > src/scmversion/tag.h
-        echo #define SCM_RELEASE_ASSET "duckstation-windows-x64-release.zip" >> src/scmversion/tag.h
-        echo #define SCM_RELEASE_TAGS {"latest", "preview"} >> src/scmversion/tag.h
-        echo #define SCM_RELEASE_TAG "preview" >> src/scmversion/tag.h
-
-
-    - name: Tag as dev build
-      if: github.ref == 'refs/heads/dev'
-      shell: cmd
-      run: |
-        echo #pragma once > src/scmversion/tag.h
-        echo #define SCM_RELEASE_ASSET "duckstation-windows-x64-release.zip" >> src/scmversion/tag.h
-        echo #define SCM_RELEASE_TAGS {"latest", "preview"} >> src/scmversion/tag.h
-        echo #define SCM_RELEASE_TAG "latest" >> src/scmversion/tag.h
-
-    - name: Update RC version fields
-      shell: cmd
-      run: |
-        cd src\scmversion
-        call update_rc_version.bat
-        cd ..\..
-        git update-index --assume-unchanged src/duckstation-qt/duckstation-qt.rc
-        git update-index --assume-unchanged src/duckstation-switch/duckstation-switch.rc
-
-    - name: Compile x64 release build
-      shell: cmd
-      run: |
-        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
-        msbuild duckstation.sln -t:Build -p:Platform=x64;Configuration=ReleaseLTCG-Clang
-
-    - name: Create x64 symbols archive
-      shell: cmd
-      run: |
-        "C:\Program Files\7-Zip\7z.exe" a -r duckstation-windows-x64-release-symbols.zip ./bin/x64/*.pdb
-
-    - name: Upload x64 release symbols artifact
-      uses: actions/upload-artifact@v1
-      with:
-        name: "windows"
-        path: "duckstation-windows-x64-release-symbols.zip"
-
-    - name: Remove extra bloat before archiving
-      shell: cmd
-      run: |
-        del /Q bin\x64\*.pdb bin\x64\*.exp bin\x64\*.lib bin\x64\*.iobj bin\x64\*.ipdb bin\x64\common-tests*
-        rename bin\x64\updater-x64-ReleaseLTCG.exe updater.exe
-
-    - name: Create x64 release archive
-      shell: cmd
-      run: |
-        "C:\Program Files\7-Zip\7z.exe" a -r duckstation-windows-x64-release.zip ./bin/x64/*
-
-    - name: Upload x64 release artifact
-      uses: actions/upload-artifact@v1
-      with:
-        name: "windows"
-        path: "duckstation-windows-x64-release.zip"
-
-
-  windows-arm64-build:
-    runs-on: windows-2022
-    timeout-minutes: 120
-    steps:
-    - uses: actions/checkout@v4.1.1
-      with:
-        fetch-depth: 0
-        submodules: true
-
-    - name: Cache Dependencies
-      id: cache-deps
-      uses: actions/cache@v3.3.2
-      with:
-        path: |
-          dep/msvc/deps-arm64
-          dep/msvc/deps-x64
-        key: deps ${{ hashFiles('scripts/build-dependencies-windows-arm64.bat', 'scripts/build-dependencies-windows-x64.bat') }}
-
-    - name: Build X64 Dependencies
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      env:
-        DEBUG: 0
-      run: scripts/build-dependencies-windows-x64.bat
-
-    - name: Build ARM64 Dependencies
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      env:
-        DEBUG: 0
-      run: scripts/build-dependencies-windows-arm64.bat
-
-    - name: Tag as preview build
-      if: github.ref == 'refs/heads/master'
-      shell: cmd
-      run: |
-        echo #pragma once > src/scmversion/tag.h
-        echo #define SCM_RELEASE_ASSET "duckstation-windows-arm64-release.zip" >> src/scmversion/tag.h
-        echo #define SCM_RELEASE_TAGS {"latest", "preview"} >> src/scmversion/tag.h
-        echo #define SCM_RELEASE_TAG "preview" >> src/scmversion/tag.h
-
-    - name: Tag as dev build
-      if: github.ref == 'refs/heads/dev'
-      shell: cmd
-      run: |
-        echo #pragma once > src/scmversion/tag.h
-        echo #define SCM_RELEASE_ASSET "duckstation-windows-arm64-release.zip" >> src/scmversion/tag.h
-        echo #define SCM_RELEASE_TAGS {"latest", "preview"} >> src/scmversion/tag.h
-        echo #define SCM_RELEASE_TAG "latest" >> src/scmversion/tag.h
-
-    - name: Update RC version fields
-      shell: cmd
-      run: |
-        cd src\scmversion
-        call update_rc_version.bat
-        cd ..\..
-        git update-index --assume-unchanged src/duckstation-qt/duckstation-qt.rc
-        git update-index --assume-unchanged src/duckstation-switch/duckstation-switch.rc
-
-    - name: Compile arm64 release build
-      shell: cmd
-      run: |
-        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64_arm64
-        msbuild duckstation.sln -t:Build -p:Platform=ARM64;Configuration=ReleaseLTCG-Clang
-
-    - name: Create arm64 symbols archive
-      shell: cmd
-      run: |
-        "C:\Program Files\7-Zip\7z.exe" a -r duckstation-windows-arm64-release-symbols.zip ./bin/ARM64/*.pdb
-
-    - name: Upload arm64 release symbols artifact
-      uses: actions/upload-artifact@v1
-      with:
-        name: "windows-arm64"
-        path: "duckstation-windows-arm64-release-symbols.zip"
-
-    - name: Remove extra bloat before archiving
-      shell: cmd
-      run: |
-        del /Q bin\ARM64\*.pdb bin\ARM64\*.exp bin\ARM64\*.lib bin\ARM64\*.iobj bin\ARM64\*.ipdb bin\ARM64\common-tests*
-        rename bin\ARM64\updater-ARM64-ReleaseLTCG.exe updater.exe
-
-    - name: Create arm64 release archive
-      shell: cmd
-      run: |
-        "C:\Program Files\7-Zip\7z.exe" a -r duckstation-windows-arm64-release.zip ./bin/ARM64/*
-
-    - name: Upload arm64 release artifact
-      uses: actions/upload-artifact@v1
-      with:
-        name: "windows-arm64"
-        path: "duckstation-windows-arm64-release.zip"
-
-
   linux-build:
     runs-on: ubuntu-22.04
     timeout-minutes: 120
@@ -396,20 +212,10 @@ jobs:
 
 
   create-release:
-    needs: [windows-build, windows-arm64-build, linux-build, linux-flatpak-build, macos-build]
+    needs: [linux-build, linux-flatpak-build, macos-build]
     runs-on: "ubuntu-22.04"
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev'
     steps:
-      - name: Download Windows Artifacts
-        uses: actions/download-artifact@v1
-        with:
-          name: "windows"
-
-      - name: Download Windows ARM64 Artifact
-        uses: actions/download-artifact@v1
-        with:
-          name: "windows-arm64"
-
       - name: Download Qt AppImage Artifact
         uses: actions/download-artifact@v1
         with:
@@ -434,10 +240,6 @@ jobs:
           prerelease: true
           title: "Latest Preview Build"
           files: |
-            windows/duckstation-windows-x64-release.zip
-            windows/duckstation-windows-x64-release-symbols.zip
-            windows-arm64/duckstation-windows-arm64-release.zip
-            windows-arm64/duckstation-windows-arm64-release-symbols.zip
             linux-x64-appimage-qt/DuckStation-x64.AppImage
             linux-flatpak/duckstation-x64.flatpak
             macos/duckstation-mac-release.zip
@@ -451,10 +253,6 @@ jobs:
           prerelease: false
           title: "Latest Rolling Release"
           files: |
-            windows/duckstation-windows-x64-release.zip
-            windows/duckstation-windows-x64-release-symbols.zip
-            windows-arm64/duckstation-windows-arm64-release.zip
-            windows-arm64/duckstation-windows-arm64-release-symbols.zip
             linux-x64-appimage-qt/DuckStation-x64.AppImage
             linux-flatpak/duckstation-x64.flatpak
             macos/duckstation-mac-release.zip
