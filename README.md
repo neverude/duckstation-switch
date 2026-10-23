@@ -6,37 +6,45 @@ Your Switch needs custom firmware (Atmosphère) and the Homebrew Menu (hbmenu) b
 
 Upstream DuckStation (PC, Android, macOS) is documented in its own [README.md](https://github.com/stenzek/duckstation/blob/master/README.md). This file covers only the Switch port.
 
-## 1. Build `duckstation.nro`
+## 1. Build and copy `duckstation.nro` (one command)
 
-Build on a Linux PC with devkitPro installed. You need `devkitA64`, `libnx`, the Switch portlibs (zstd, webp, zlib, mesa, png, jpeg, freetype, harfbuzz, curl, libdrm_nouveau), and CMake and Ninja on your `PATH`.
-
-From the root of this repository, run:
+Put the microSD card in your PC and make sure it is mounted. Then, from the root of this repository, run:
 
 ```bash
 ./scripts/build-switch.sh
 ```
 
-When it finishes, the file is at:
+The script does everything:
 
-```
-/tmp/opencode/build-switch/duckstation.nro
-```
+1. Checks that devkitPro, CMake and Ninja are installed.
+2. Builds `duckstation.nro`.
+3. Finds your microSD card and copies the file to `switch/duckstation/duckstation.nro` on it.
+4. Checks that the copy is identical to the original before it finishes.
 
-The script puts its build in `/tmp/opencode/build-switch` by default, and `/tmp` may be cleared on reboot. To keep the build somewhere permanent, set `BUILD_DIR` first:
+If more than one drive is mounted, the script stops and shows the list. Run it again with the card's path:
 
 ```bash
-BUILD_DIR=~/builds/duckstation-switch ./scripts/build-switch.sh
+./scripts/build-switch.sh /run/media/$USER/YOUR_SD_CARD
 ```
 
-If devkitPro is not in `/opt/devkitpro`, also set `DEVKITPRO`.
+Other options:
 
-## 2. Put it on the Switch
+- `./scripts/build-switch.sh --build-only` builds the file but does not touch the card.
+- If devkitPro is not in `/opt/devkitpro`, set `DEVKITPRO` first: `DEVKITPRO=/path/to/devkitpro ./scripts/build-switch.sh`
 
-1. Create the folder `sdmc:/switch/duckstation/` on the microSD card. `sdmc:` is the root of the card.
-2. Copy `duckstation.nro` into that folder, so the path is `sdmc:/switch/duckstation/duckstation.nro`.
-3. Put the card back in the Switch.
+The build is kept in `~/.cache/duckstation-switch-build`.
 
-DuckStation uses the folder that contains `duckstation.nro` for its data. That includes the BIOS, memory cards, save states and settings. Step 4 explains what goes into it.
+Then eject the card safely and continue with step 2.
+
+## 2. What is on the card now
+
+After step 1 the card contains:
+
+```
+switch/duckstation/duckstation.nro
+```
+
+This folder is also where DuckStation keeps everything else: the BIOS, memory cards, save states and settings. Step 4 explains what to add.
 
 ## 3. Start it
 
