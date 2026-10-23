@@ -160,6 +160,9 @@ This repository is **not** a GitHub fork. It is a standalone copy with the full 
 
 ## Sources and third-party code
 
+See also [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+
 - **DuckStation** by Connor McLaughlin (stenzek) and contributors: [github.com/stenzek/duckstation](https://github.com/stenzek/duckstation). Full list in [CONTRIBUTORS.md](CONTRIBUTORS.md).
 - **Switch port** by RSDuck (credited in `src/duckstation-switch/CMakeLists.txt`). Its source repository is: *[to be added by the maintainer]*.
 - **deko3d memory heap** (`src/util/deko3d_memory_heap.*`): copyright 2016 Dolphin Emulator Project, licensed GPLv2 or later. It is a home-made allocator based on TLSF (http://www.gii.upv.es/tlsf/).
@@ -170,6 +173,8 @@ This repository is **not** a GitHub fork. It is a standalone copy with the full 
 
 ## License
 
-- DuckStation's source file headers say `SPDX-License-Identifier: (GPL-3.0 OR CC-BY-NC-ND-4.0)`. The repository's `LICENSE` file contains the GPL v3 text.
+- This project is distributed under the **GNU General Public License v3.0** (GPL-3.0). The full text is in [LICENSE](LICENSE).
+- The upstream source files are marked `GPL-3.0 OR CC-BY-NC-ND-4.0`. This project uses the GPL-3.0 option. The Dolphin-derived file is GPLv2 or later, which is compatible with GPL-3.0.
 - Each file keeps its own copyright and license header. Do not remove them.
-- The Switch-specific code follows the license of the files it was based on.
+- Third-party libraries in `dep/` keep their own licenses. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- Anyone who gets a copy of this software may use, modify and redistribute it under GPL-3.0, and must make the source available with it.
