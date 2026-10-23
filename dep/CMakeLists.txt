@@ -61,6 +61,5 @@ endif()
 if(WIN32)
   add_subdirectory(d3d12ma EXCLUDE_FROM_ALL)
   disable_compiler_warnings_for_target(d3d12ma)
-  add_subdirectory(winpixeventruntime EXCLUDE_FROM_ALL)
 endif()
 

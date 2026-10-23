@@ -63,17 +63,7 @@ static constexpr GPUTexture::Format s_swap_chain_format = GPUTexture::Format::RG
 // We just need to keep this alive, never reference it.
 static std::vector<u8> s_pipeline_cache_data;
 
-#ifdef _DEBUG
-#include "WinPixEventRuntime/pix3.h"
-static u32 s_debug_scope_depth = 0;
-#endif
-
-D3D12Device::D3D12Device()
-{
-#ifdef _DEBUG
-  s_debug_scope_depth = 0;
-#endif
-}
+D3D12Device::D3D12Device() = default;
 
 D3D12Device::~D3D12Device()
 {
@@ -1125,52 +1115,16 @@ void D3D12Device::SubmitPresent()
     m_swap_chain->Present(0, 0);
 }
 
-#ifdef _DEBUG
-static UINT64 Palette(float phase, const std::array<float, 3>& a, const std::array<float, 3>& b,
-                      const std::array<float, 3>& c, const std::array<float, 3>& d)
-{
-  std::array<float, 3> result;
-  result[0] = a[0] + b[0] * std::cos(6.28318f * (c[0] * phase + d[0]));
-  result[1] = a[1] + b[1] * std::cos(6.28318f * (c[1] * phase + d[1]));
-  result[2] = a[2] + b[2] * std::cos(6.28318f * (c[2] * phase + d[2]));
-
-  return PIX_COLOR(static_cast<BYTE>(std::clamp(result[0] * 255.0f, 0.0f, 255.0f)),
-                   static_cast<BYTE>(std::clamp(result[1] * 255.0f, 0.0f, 255.0f)),
-                   static_cast<BYTE>(std::clamp(result[2] * 255.0f, 0.0f, 255.0f)));
-}
-#endif
-
 void D3D12Device::PushDebugGroup(const char* name)
 {
-#ifdef _DEBUG
-  if (!m_debug_device)
-    return;
-
-  const UINT64 color = Palette(static_cast<float>(++s_debug_scope_depth), {0.5f, 0.5f, 0.5f}, {0.5f, 0.5f, 0.5f},
-                               {1.0f, 1.0f, 0.5f}, {0.8f, 0.90f, 0.30f});
-  PIXBeginEvent(GetCommandList(), color, "%s", name);
-#endif
 }
 
 void D3D12Device::PopDebugGroup()
 {
-#ifdef _DEBUG
-  if (!m_debug_device)
-    return;
-
-  s_debug_scope_depth = (s_debug_scope_depth == 0) ? 0 : (s_debug_scope_depth - 1u);
-  PIXEndEvent(GetCommandList());
-#endif
 }
 
 void D3D12Device::InsertDebugMessage(const char* msg)
 {
-#ifdef _DEBUG
-  if (!m_debug_device)
-    return;
-
-  PIXSetMarker(GetCommandList(), PIX_COLOR(0, 0, 0), "%s", msg);
-#endif
 }
 
 void D3D12Device::SetFeatures(FeatureMask disabled_features)

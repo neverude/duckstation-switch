@@ -29,7 +29,6 @@ This project includes third-party code in `dep/`. Each library keeps its own cop
 | minizip | `dep/minizip/` | `dep/minizip/LICENSE` (zlib license) |
 | riscv-disas | `dep/riscv-disas/` | `dep/riscv-disas/LICENSE` (MIT) |
 | vulkan | `dep/vulkan/` | `dep/vulkan/LICENSE` (Apache-2.0; Khronos headers, see the file headers) |
-| winpixeventruntime | `dep/winpixeventruntime/` | **Microsoft PIX runtime, license text still to be added. Check Microsoft's terms before redistributing the DLLs.** |
 | xbyak | `dep/xbyak/` | `dep/xbyak/COPYRIGHT` (BSD-3-Clause) |
 | msvc | `dep/msvc/` | Not a library. Windows build property files from the DuckStation dependency pack. |
 

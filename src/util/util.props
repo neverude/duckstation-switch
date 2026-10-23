@@ -20,8 +20,6 @@
     </Link>
   </ItemDefinitionGroup>
 
-  <Import Condition="$(Configuration.Contains('Debug'))" Project="..\..\dep\winpixeventruntime\WinPixEventRuntime.props" />
-
   <!-- Dependency linking and DLL copying -->
   <ItemDefinitionGroup>
     <ClCompile>
