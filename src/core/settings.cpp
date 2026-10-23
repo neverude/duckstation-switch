@@ -807,7 +807,12 @@ void Settings::FixIncompatibleSettings(bool display_osd_messages)
 
 void Settings::UpdateLogSettings()
 {
+#ifdef __SWITCH__
+  // The port is still being brought up, always log at least at Dev level to the SD card log.
+  Log::SetLogLevel(std::max(log_level, LOGLEVEL_DEV));
+#else
   Log::SetLogLevel(log_level);
+#endif
   Log::SetLogFilter(log_filter);
   Log::SetConsoleOutputParams(log_to_console, log_timestamps);
   Log::SetDebugOutputParams(log_to_debug);

@@ -21,32 +21,59 @@ extern "C" {
 extern char __start__;
 extern char __rodata_start;
 
-void HandleFault(uint64_t pc, uint64_t lr, uint64_t fp, uint64_t fault_addr, Result desc)
+static bool ReadU64Safe(uint64_t address, uint64_t* out)
 {
-  if (pc >= (uint64_t)&__start__ && pc < (uint64_t)&__rodata_start)
+  if ((address & 0x7) != 0)
+    return false;
+
+  MemoryInfo info = {};
+  u32 page_info = 0;
+  if (R_FAILED(svcQueryMemory(&info, &page_info, address)) || info.type == MemType_Unmapped || !(info.perm & Perm_R))
+    return false;
+
+  *out = *reinterpret_cast<const uint64_t*>(address);
+  return true;
+}
+
+// Writes the fault details to the SD card. Addresses are printed relative to the start of the module, so they can
+// be looked up with addr2line against the matching .elf. Deliberately avoids the logger (its mutex may be held).
+void HandleFault(const ExceptionFrameA64* frame, uint64_t fp, Result desc)
+{
+  const uint64_t base = reinterpret_cast<uint64_t>(&__start__);
+  const uint64_t text_end = reinterpret_cast<uint64_t>(&__rodata_start);
+
+  FILE* fp_out = std::fopen("sdmc:/switch/duckstation/crash.txt", "w");
+  if (!fp_out)
+    svcBreak(BreakReason_Panic, 0, 0);
+
+  std::fprintf(fp_out, "DuckStation Switch crash report\n");
+  std::fprintf(fp_out, "module base 0x%llx, text size 0x%llx\n", static_cast<unsigned long long>(base),
+               static_cast<unsigned long long>(text_end - base));
+  std::fprintf(fp_out, "reason 0x%x (%u-%04u), esr 0x%x, far 0x%llx\n", desc, 2000 + (desc & 0x1FF),
+               (desc >> 9) & 0x1FFF, frame->esr, static_cast<unsigned long long>(frame->far));
+  std::fprintf(fp_out, "pc 0x%llx (%s +0x%llx)\n", static_cast<unsigned long long>(frame->pc),
+               (frame->pc >= base && frame->pc < text_end) ? "module" : "other",
+               static_cast<unsigned long long>(frame->pc - base));
+  std::fprintf(fp_out, "lr 0x%llx (+0x%llx), sp 0x%llx\n", static_cast<unsigned long long>(frame->lr),
+               static_cast<unsigned long long>(frame->lr - base), static_cast<unsigned long long>(frame->sp));
+  for (int i = 0; i < 9; i++)
+    std::fprintf(fp_out, "x%d 0x%llx\n", i, static_cast<unsigned long long>(frame->x[i]));
+
+  std::fprintf(fp_out, "stack frames (module-relative):\n");
+  uint64_t lr = frame->lr;
+  for (int frame_num = 0; frame_num < 24; frame_num++)
   {
-    printf("Unintentional fault in .text at %p (type %d) (trying to access %p?)\n", (void*)(pc - (uint64_t)&__start__),
-           desc, (void*)fault_addr);
+    std::fprintf(fp_out, "  #%d +0x%llx\n", frame_num, static_cast<unsigned long long>(lr - base));
 
-    int frame_num = 0;
-    while (true)
-    {
-      printf("Stack frame %d %p\n", frame_num, (void*)(lr - (uint64_t)&__start__));
-      lr = *(uint64_t*)(fp + 8);
-      fp = *(uint64_t*)fp;
+    uint64_t next_fp = 0, next_lr = 0;
+    if (!ReadU64Safe(fp, &next_fp) || !ReadU64Safe(fp + 8, &next_lr) || next_fp == 0)
+      break;
 
-      frame_num++;
-      if (frame_num > 16 || fp == 0 || (fp & 0x7) != 0)
-        break;
-    }
-  }
-  else
-  {
-    printf("Unintentional fault somewhere in deep (address) space at %p (type %d)\n", (void*)pc, desc);
-    if (lr >= (uint64_t)&__start__ && lr < (uint64_t)&__rodata_start)
-      printf("LR in range: %p\n", (void*)(lr - (uint64_t)&__start__));
+    lr = next_lr;
+    fp = next_fp;
   }
 
+  std::fclose(fp_out);
   svcBreak(BreakReason_Panic, 0, 0);
 }
 
@@ -58,7 +85,7 @@ void switch_exception_handler(Result reason, ExceptionFrameA64* frame, u64 fp)
 {
   if (Common::PageFaultHandler::PageFaultHandler(frame))
     return;
-  HandleFault(frame->pc, frame->lr, fp, frame->far, reason);
+  HandleFault(frame, fp, reason);
 }
 }
 
@@ -75,7 +102,11 @@ SwitchNoGUIPlatform::SwitchNoGUIPlatform()
   m_message_loop_running.store(true, std::memory_order_release);
 }
 
-SwitchNoGUIPlatform::~SwitchNoGUIPlatform() = default;
+SwitchNoGUIPlatform::~SwitchNoGUIPlatform()
+{
+  // The hook holds a pointer to this object, do not leave it registered.
+  appletUnhook(&m_applet_cookie);
+}
 
 void SwitchNoGUIPlatform::AppletModeChange(AppletHookType type)
 {
@@ -84,6 +115,7 @@ void SwitchNoGUIPlatform::AppletModeChange(AppletHookType type)
     case AppletHookType_OnOperationMode:
     {
       std::optional<WindowInfo> wi = GetPlatformWindowInfo();
+      nwindowSetDimensions(nwindowGetDefault(), wi->surface_width, wi->surface_height);
       NoGUIHost::ProcessPlatformWindowResize(wi->surface_width, wi->surface_height, wi->surface_scale);
       break;
     }
@@ -125,6 +157,11 @@ void SwitchNoGUIPlatform::SetDefaultConfig(SettingsInterface& si)
 
 bool SwitchNoGUIPlatform::CreatePlatformWindow(std::string title)
 {
+  // Mesa takes the surface size from the native window.
+  const std::optional<WindowInfo> wi = GetPlatformWindowInfo();
+  if (wi.has_value())
+    nwindowSetDimensions(nwindowGetDefault(), wi->surface_width, wi->surface_height);
+
   return true;
 }
 

@@ -125,7 +125,9 @@ bool OpenGLContextEGL::Initialize(std::span<const Version> versions_to_try, Erro
     return false;
   }
 
-  Log_DevFmt("eglInitialize() version: {}.{}", egl_major, egl_minor);
+  Log_InfoFmt("eglInitialize() version: {}.{}", egl_major, egl_minor);
+  Log_InfoFmt("EGL vendor: {}, version: {}", eglQueryString(m_display, EGL_VENDOR) ? eglQueryString(m_display, EGL_VENDOR) : "?",
+              eglQueryString(m_display, EGL_VERSION) ? eglQueryString(m_display, EGL_VERSION) : "?");
 
   // Re-initialize EGL/GLAD.
   if (!LoadGLADEGL(m_display, error))
@@ -136,6 +138,8 @@ bool OpenGLContextEGL::Initialize(std::span<const Version> versions_to_try, Erro
 
   for (const Version& cv : versions_to_try)
   {
+    Log_InfoFmt("Trying context version {}.{} ({})", cv.major_version, cv.minor_version,
+                cv.profile == OpenGLContext::Profile::ES ? "ES" : "Desktop");
     if (CreateContextAndSurface(cv, nullptr, true))
       return true;
   }
@@ -146,19 +150,29 @@ bool OpenGLContextEGL::Initialize(std::span<const Version> versions_to_try, Erro
 
 EGLDisplay OpenGLContextEGL::GetPlatformDisplay(Error* error)
 {
+#ifdef __SWITCH__
+  // Mesa on Switch only has its native platform, probing for the surfaceless one can return a display that
+  // cannot create window surfaces.
+  return GetFallbackDisplay(error);
+#else
   EGLDisplay dpy = TryGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA, "EGL_MESA_platform_surfaceless");
   if (dpy == EGL_NO_DISPLAY)
     dpy = GetFallbackDisplay(error);
 
   return dpy;
+#endif
 }
 
 EGLSurface OpenGLContextEGL::CreatePlatformSurface(EGLConfig config, void* win, Error* error)
 {
+#ifdef __SWITCH__
+  return CreateFallbackSurface(config, win, error);
+#else
   EGLSurface surface = TryCreatePlatformSurface(config, win, error);
   if (!surface)
     surface = CreateFallbackSurface(config, win, error);
   return surface;
+#endif
 }
 
 EGLDisplay OpenGLContextEGL::TryGetPlatformDisplay(EGLenum platform, const char* platform_ext)

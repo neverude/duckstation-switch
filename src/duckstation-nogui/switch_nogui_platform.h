@@ -47,7 +47,7 @@ public:
   void AppletModeChange(AppletHookType type);
 
 private:
-  AppletHookCookie m_applet_cookie;
+  AppletHookCookie m_applet_cookie = {};
 
   std::deque<std::function<void()>> m_callback_queue;
   std::mutex m_callback_queue_mutex;
