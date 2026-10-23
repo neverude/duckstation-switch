@@ -24,14 +24,14 @@ This project includes third-party code in `dep/`. Each library keeps its own cop
 | vixl | `dep/vixl/` | `dep/vixl/LICENCE` |
 | xxhash | `dep/xxhash/` | `dep/xxhash/LICENSE` |
 | zydis | `dep/zydis/` | `dep/zydis/LICENSE` |
-| d3d12ma | `dep/d3d12ma/` | **missing in this repository, to be added** |
-| glad | `dep/glad/` | **missing in this repository, to be added** |
-| minizip | `dep/minizip/` | **missing in this repository, to be added** |
-| riscv-disas | `dep/riscv-disas/` | **missing in this repository, to be added** |
-| vulkan | `dep/vulkan/` | **missing in this repository, to be added** |
-| winpixeventruntime | `dep/winpixeventruntime/` | **missing in this repository, to be added** |
-| xbyak | `dep/xbyak/` | **missing in this repository, to be added** |
-| msvc | `dep/msvc/` | **missing in this repository, to be added** |
+| d3d12ma | `dep/d3d12ma/` | `dep/d3d12ma/LICENSE` (MIT) |
+| glad | `dep/glad/` | `dep/glad/LICENSE` (MIT for the glad code; the Khronos headers keep their own notices) |
+| minizip | `dep/minizip/` | `dep/minizip/LICENSE` (zlib license) |
+| riscv-disas | `dep/riscv-disas/` | `dep/riscv-disas/LICENSE` (MIT) |
+| vulkan | `dep/vulkan/` | `dep/vulkan/LICENSE` (Apache-2.0; Khronos headers, see the file headers) |
+| winpixeventruntime | `dep/winpixeventruntime/` | **Microsoft PIX runtime, license text still to be added. Check Microsoft's terms before redistributing the DLLs.** |
+| xbyak | `dep/xbyak/` | `dep/xbyak/COPYRIGHT` (BSD-3-Clause) |
+| msvc | `dep/msvc/` | Not a library. Windows build property files from the DuckStation dependency pack. |
 
 Other third-party code:
 
