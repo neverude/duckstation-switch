@@ -475,8 +475,13 @@ bool OpenGLDevice::CheckFeatures(FeatureMask disabled_features)
   m_features.geometry_shaders =
     !(disabled_features & FEATURE_MASK_GEOMETRY_SHADERS) && (GLAD_GL_VERSION_3_2 || GLAD_GL_ES_VERSION_3_2);
 
+#ifdef __SWITCH__
+  // The timer query path faulted on the Switch in testing; the GPU usage overlay is not needed there.
+  m_features.gpu_timing = false;
+#else
   m_features.gpu_timing = !(m_gl_context->IsGLES() &&
                             (!GLAD_GL_EXT_disjoint_timer_query || !glGetQueryObjectivEXT || !glGetQueryObjectui64vEXT));
+#endif
   m_features.partial_msaa_resolve = true;
   m_features.memory_import = true;
   m_features.explicit_present = false;
