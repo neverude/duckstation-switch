@@ -143,6 +143,21 @@ For the emulator itself (PC, Android, macOS), see the upstream [DuckStation READ
 
 ---
 
+## Where this code comes from
+
+This repository is **not** a GitHub fork. It is a standalone copy with the full history of the upstream project imported.
+
+- **Upstream:** [stenzek/duckstation](https://github.com/stenzek/duckstation), the PS1 emulator by Connor McLaughlin (stenzek). Everything except the Switch layer comes from here. Its history (about 7,000 commits) is kept in this repository.
+- **Switch port layer:** the files `src/duckstation-switch/`, `src/util/switch_*`, `src/util/deko3d_*`, `src/util/platform_misc_switch.cpp`, `scripts/build-switch.sh` and the Switch changes in CMake and `dep/` were imported from a separate "duckstation-switch" fork. The Switch port is credited to RSDuck in `src/duckstation-switch/CMakeLists.txt`.
+- **Changes in this repository:** the Switch-specific commits, from `Import Switch port layer` onwards, are by the maintainer of this repository (`blixxen`).
+
+## Disclaimer
+
+- This project is not affiliated with, endorsed by or sponsored by Nintendo, Sony, stenzek or RSDuck.
+- "Nintendo Switch", "PlayStation" and "PS1" are trademarks of their owners. They are used only to describe what the software runs on.
+- The software is provided "as is", without warranty of any kind. Use it at your own risk. Modifying your console may void its warranty.
+- No BIOS files, game images, encryption keys or Nintendo software are included. You must provide your own, and only use copies you are legally allowed to use.
+
 ## Credits and license
 
 - DuckStation is by Connor McLaughlin (stenzek) and its contributors. See [CONTRIBUTORS.md](CONTRIBUTORS.md).
