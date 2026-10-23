@@ -452,6 +452,9 @@ void ApplyCheatCode(u32 index);
 /// Toggle Widescreen Hack and Aspect Ratio
 void ToggleWidescreen();
 
+/// Cycles the display aspect ratio between the ones that suit a handheld screen (Switch).
+void ToggleAspectRatio();
+
 /// Returns true if fast forwarding or slow motion is currently active.
 bool IsRunningAtNonStandardSpeed();
 

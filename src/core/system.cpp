@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: (GPL-3.0 OR CC-BY-NC-ND-4.0)
 
 #include "system.h"
+
+#include <algorithm>
+#include <array>
 #include "IconsFontAwesome5.h"
 #include "achievements.h"
 #include "bios.h"
@@ -4864,6 +4867,24 @@ void System::ToggleWidescreen()
       fmt::format(TRANSLATE_FS("OSDMessage", "Widescreen hack is now disabled, and aspect ratio is set to {}."),
                   Settings::GetDisplayAspectRatioDisplayName(g_settings.display_aspect_ratio), 5.0f));
   }
+
+  GTE::UpdateAspectRatio();
+}
+
+void System::ToggleAspectRatio()
+{
+  static constexpr std::array<DisplayAspectRatio, 3> cycle = {
+    DisplayAspectRatio::R4_3, DisplayAspectRatio::MatchWindow, DisplayAspectRatio::Auto};
+
+  const auto it = std::find(cycle.begin(), cycle.end(), g_settings.display_aspect_ratio);
+  const size_t index = (it == cycle.end()) ? 0 : (static_cast<size_t>(it - cycle.begin()) + 1) % cycle.size();
+  g_settings.display_aspect_ratio = cycle[index];
+
+  Host::AddKeyedOSDMessage(
+    "ToggleAspectRatio",
+    fmt::format(TRANSLATE_FS("OSDMessage", "Aspect ratio is now {}."),
+                Settings::GetDisplayAspectRatioDisplayName(g_settings.display_aspect_ratio)),
+    3.0f);
 
   GTE::UpdateAspectRatio();
 }

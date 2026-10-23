@@ -232,7 +232,7 @@ void NoGUIHost::SetDataDirectory()
 #ifdef __SWITCH__
 // Settings files created before the Switch defaults existed only contain keyboard bindings, which do nothing on
 // Switch. Bring them up to date, without touching anything that was set up for the Switch controller.
-static constexpr u32 SWITCH_DEFAULTS_VERSION = 2;
+static constexpr u32 SWITCH_DEFAULTS_VERSION = 3;
 
 static bool ApplySwitchSettingsDefaults(SettingsInterface& si)
 {
@@ -271,15 +271,20 @@ static bool ApplySwitchSettingsDefaults(SettingsInterface& si)
   {
     Log_InfoPrint("Applying the Switch defaults for display and hotkeys.");
 
-    // Use the whole screen.
-    si.SetStringValue("Display", "AspectRatio", Settings::GetDisplayAspectRatioName(DisplayAspectRatio::MatchWindow));
-
     // Pause menu: push in the right stick, or ZL + ZR together. Fast forward toggle: push in the left stick.
     si.DeleteValue("Hotkeys", "OpenPauseMenu");
     si.SetStringValue("Hotkeys", "OpenPauseMenu", "P0/RStick");
     si.AddToStringList("Hotkeys", "OpenPauseMenu", "P0/ZL & P0/ZR");
     si.DeleteValue("Hotkeys", "ToggleFastForward");
     si.SetStringValue("Hotkeys", "ToggleFastForward", "P0/LStick");
+
+    // Quick save / quick load / aspect ratio, all with ZL or ZR held so the face buttons still work normally.
+    si.SetStringValue("Hotkeys", "SaveSelectedSaveState", "P0/ZL & P0/X");
+    si.SetStringValue("Hotkeys", "LoadSelectedSaveState", "P0/ZL & P0/Y");
+    si.SetStringValue("Hotkeys", "ToggleAspectRatio", "P0/ZR & P0/X");
+
+    // 4:3 instead of stretching to the whole screen, which squashed the picture.
+    si.SetStringValue("Display", "AspectRatio", Settings::GetDisplayAspectRatioName(DisplayAspectRatio::R4_3));
 
     si.SetUIntValue("Switch", "DefaultsVersion", SWITCH_DEFAULTS_VERSION);
     changed = true;

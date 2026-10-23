@@ -35,6 +35,9 @@ void Settings::SetDefaultHotkeyConfig(SettingsInterface& si)
   si.SetStringValue("Hotkeys", "OpenPauseMenu", "P0/RStick");
   si.AddToStringList("Hotkeys", "OpenPauseMenu", "P0/ZL & P0/ZR");
   si.SetStringValue("Hotkeys", "ToggleFastForward", "P0/LStick");
+  si.SetStringValue("Hotkeys", "SaveSelectedSaveState", "P0/ZL & P0/X");
+  si.SetStringValue("Hotkeys", "LoadSelectedSaveState", "P0/ZL & P0/Y");
+  si.SetStringValue("Hotkeys", "ToggleAspectRatio", "P0/ZR & P0/X");
 #elif !defined(__ANDROID__)
   si.SetStringValue("Hotkeys", "FastForward", "Keyboard/Tab");
   si.SetStringValue("Hotkeys", "TogglePause", "Keyboard/Space");
@@ -413,6 +416,12 @@ DEFINE_HOTKEY("ToggleWidescreen", TRANSLATE_NOOP("Hotkeys", "Graphics"), TRANSLA
               [](s32 pressed) {
                 if (!pressed)
                   System::ToggleWidescreen();
+              })
+
+DEFINE_HOTKEY("ToggleAspectRatio", TRANSLATE_NOOP("Hotkeys", "Graphics"),
+              TRANSLATE_NOOP("Hotkeys", "Cycle Aspect Ratio"), [](s32 pressed) {
+                if (!pressed)
+                  System::ToggleAspectRatio();
               })
 
 DEFINE_HOTKEY("TogglePGXPDepth", TRANSLATE_NOOP("Hotkeys", "Graphics"),
