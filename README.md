@@ -158,9 +158,18 @@ This repository is **not** a GitHub fork. It is a standalone copy with the full 
 - The software is provided "as is", without warranty of any kind. Use it at your own risk. Modifying your console may void its warranty.
 - No BIOS files, game images, encryption keys or Nintendo software are included. You must provide your own, and only use copies you are legally allowed to use.
 
-## Credits and license
+## Sources and third-party code
 
-- DuckStation is by Connor McLaughlin (stenzek) and its contributors. See [CONTRIBUTORS.md](CONTRIBUTORS.md).
-- The Switch port is by RSDuck and the contributors of this fork.
-- The NH Switch Guide is by the Nintendo Homebrew community.
-- DuckStation is licensed under the GNU General Public License v3. See [LICENSE](LICENSE).
+- **DuckStation** by Connor McLaughlin (stenzek) and contributors: [github.com/stenzek/duckstation](https://github.com/stenzek/duckstation). Full list in [CONTRIBUTORS.md](CONTRIBUTORS.md).
+- **Switch port** by RSDuck (credited in `src/duckstation-switch/CMakeLists.txt`). Its source repository is: *[to be added by the maintainer]*.
+- **deko3d memory heap** (`src/util/deko3d_memory_heap.*`): copyright 2016 Dolphin Emulator Project, licensed GPLv2 or later. It is a home-made allocator based on TLSF (http://www.gii.upv.es/tlsf/).
+- **deko3d pipeline** (`src/util/deko3d_pipeline.cpp`): based on the shader code in [switchbrew/switch-examples](https://github.com/switchbrew/switch-examples).
+- **Libraries in `dep/`:** each one keeps its own license, which is in its own folder. These include imgui, fmt, glad, libchdr, rcheevos, reshadefx, cubeb, zydis, vixl and others.
+- **Platform tools:** libnx and devkitPro (build tools), Atmosphère and hbmenu (custom firmware and Homebrew Menu). These are not in this repository.
+- **NH Switch Guide:** by the Nintendo Homebrew community, at [switch.hacks.guide](https://switch.hacks.guide).
+
+## License
+
+- DuckStation's source file headers say `SPDX-License-Identifier: (GPL-3.0 OR CC-BY-NC-ND-4.0)`. The repository's `LICENSE` file contains the GPL v3 text.
+- Each file keeps its own copyright and license header. Do not remove them.
+- The Switch-specific code follows the license of the files it was based on.
