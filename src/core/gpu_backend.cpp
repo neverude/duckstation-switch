@@ -1,6 +1,9 @@
 // SPDX-FileCopyrightText: 2019-2022 Connor McLaughlin <stenzek@gmail.com>
 // SPDX-License-Identifier: (GPL-3.0 OR CC-BY-NC-ND-4.0)
 
+#ifdef __SWITCH__
+#include <switch.h>
+#endif
 #include "gpu_backend.h"
 #include "common/align.h"
 #include "common/log.h"
@@ -208,6 +211,12 @@ void GPUBackend::Sync(bool allow_sleep)
 
 void GPUBackend::RunGPULoop()
 {
+#ifdef __SWITCH__
+  // Same reasoning as for the CPU thread, keep it off core 0 (audio) and core 2 (emulation).
+  svcSetThreadPriority(CUR_THREAD_HANDLE, 0x2B);
+  svcSetThreadCoreMask(CUR_THREAD_HANDLE, 1, 0x7);
+#endif
+
   static constexpr double SPIN_TIME_NS = 1 * 1000000;
   Common::Timer::Value last_command_time = 0;
 

@@ -30,8 +30,11 @@ void Settings::SetDefaultHotkeyConfig(SettingsInterface& si)
   si.ClearSection("Hotkeys");
 
 #if defined(__SWITCH__)
-  // No keyboard on Switch. ZL + ZR together open the pause menu, which also has save states and quit.
-  si.SetStringValue("Hotkeys", "OpenPauseMenu", "P0/ZL & P0/ZR");
+  // No keyboard on Switch. Pushing in the right stick, or ZL + ZR together, opens the pause menu (save states, quit),
+  // pushing in the left stick toggles fast forward.
+  si.SetStringValue("Hotkeys", "OpenPauseMenu", "P0/RStick");
+  si.AddToStringList("Hotkeys", "OpenPauseMenu", "P0/ZL & P0/ZR");
+  si.SetStringValue("Hotkeys", "ToggleFastForward", "P0/LStick");
 #elif !defined(__ANDROID__)
   si.SetStringValue("Hotkeys", "FastForward", "Keyboard/Tab");
   si.SetStringValue("Hotkeys", "TogglePause", "Keyboard/Space");

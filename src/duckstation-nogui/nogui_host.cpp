@@ -232,6 +232,8 @@ void NoGUIHost::SetDataDirectory()
 #ifdef __SWITCH__
 // Settings files created before the Switch defaults existed only contain keyboard bindings, which do nothing on
 // Switch. Bring them up to date, without touching anything that was set up for the Switch controller.
+static constexpr u32 SWITCH_DEFAULTS_VERSION = 2;
+
 static bool ApplySwitchSettingsDefaults(SettingsInterface& si)
 {
   bool changed = false;
@@ -242,13 +244,6 @@ static bool ApplySwitchSettingsDefaults(SettingsInterface& si)
   {
     Log_InfoPrint("Pad 1 has no Switch bindings, applying the Switch defaults.");
     Settings::SetDefaultControllerConfig(si);
-    changed = true;
-  }
-
-  const std::string pause_menu = si.GetStringValue("Hotkeys", "OpenPauseMenu", "");
-  if (pause_menu.empty() || pause_menu.starts_with("Keyboard/") || pause_menu == "P0/LStick & P0/RStick")
-  {
-    si.SetStringValue("Hotkeys", "OpenPauseMenu", "P0/ZL & P0/ZR");
     changed = true;
   }
 
@@ -267,6 +262,26 @@ static bool ApplySwitchSettingsDefaults(SettingsInterface& si)
     si.SetBoolValue("Switch", "BoostClocks", true);
     si.SetUIntValue("Switch", "CPUClockMHz", 1785);
     si.SetUIntValue("Switch", "GPUClockMHz", 768);
+    si.SetUIntValue("Switch", "MemoryClockMHz", 1600);
+    changed = true;
+  }
+
+  // Defaults that are applied once per version, so later changes made in the menus are kept.
+  if (si.GetUIntValue("Switch", "DefaultsVersion", static_cast<u32>(0)) < SWITCH_DEFAULTS_VERSION)
+  {
+    Log_InfoPrint("Applying the Switch defaults for display and hotkeys.");
+
+    // Use the whole screen.
+    si.SetStringValue("Display", "AspectRatio", Settings::GetDisplayAspectRatioName(DisplayAspectRatio::MatchWindow));
+
+    // Pause menu: push in the right stick, or ZL + ZR together. Fast forward toggle: push in the left stick.
+    si.DeleteValue("Hotkeys", "OpenPauseMenu");
+    si.SetStringValue("Hotkeys", "OpenPauseMenu", "P0/RStick");
+    si.AddToStringList("Hotkeys", "OpenPauseMenu", "P0/ZL & P0/ZR");
+    si.DeleteValue("Hotkeys", "ToggleFastForward");
+    si.SetStringValue("Hotkeys", "ToggleFastForward", "P0/LStick");
+
+    si.SetUIntValue("Switch", "DefaultsVersion", SWITCH_DEFAULTS_VERSION);
     changed = true;
   }
 
@@ -314,6 +329,7 @@ static void ApplySwitchClockSettings(const SettingsInterface& si)
 
   SetSwitchClockRate(PcvModuleId_CpuBus, si.GetUIntValue("Switch", "CPUClockMHz", 1785) * 1000000u, "CPU");
   SetSwitchClockRate(PcvModuleId_GPU, si.GetUIntValue("Switch", "GPUClockMHz", 768) * 1000000u, "GPU");
+  SetSwitchClockRate(PcvModuleId_EMC, si.GetUIntValue("Switch", "MemoryClockMHz", 1600) * 1000000u, "Memory");
 }
 #endif
 
@@ -735,6 +751,14 @@ void NoGUIHost::ProcessCPUThreadEvents(bool block)
 void NoGUIHost::CPUThreadEntryPoint()
 {
   Threading::SetNameOfCurrentThread("CPU Thread");
+
+#ifdef __SWITCH__
+  // Threads created through pthreads start at the lowest priority (0x3B), below the main thread (0x2C) and the audio
+  // thread. Keep the emulation thread above them, and away from core 0 where the audio thread is pinned.
+  Result prio_rc = svcSetThreadPriority(CUR_THREAD_HANDLE, 0x2B);
+  Result core_rc = svcSetThreadCoreMask(CUR_THREAD_HANDLE, 2, 0x7);
+  Log_InfoFmt("CPU thread priority 0x2B: 0x{:X}, preferred core 2: 0x{:X}", prio_rc, core_rc);
+#endif
 
   // input source setup must happen on emu thread
   if (!System::Internal::ProcessStartup())
